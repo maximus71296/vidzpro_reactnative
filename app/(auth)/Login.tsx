@@ -1,54 +1,102 @@
 import responsive from '@/responsive';
+import { loginUser } from '@/services/api'; // 👈 API call
 import { router } from 'expo-router';
-import React from 'react';
-import { Image, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import React, { useState } from 'react';
+import {
+  Alert,
+  Image,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import logo from "../../assets/images/logo.png";
 
 const Login = () => {
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password.");
+      return;
+    }
+
+    setLoading(true);
+    const result = await loginUser(email, password);
+    setLoading(false);
+
+    if (result.success === 1) {
+      const { access_token, name } = result.data;
+
+      // Optionally: Save token to AsyncStorage or Context
+      // await AsyncStorage.setItem('token', access_token);
+
+      Alert.alert("Login Successful", `Welcome ${name}`);
+      // Replace with your app's post-login route
+      // router.replace("/(tabs)/home");
+    } else {
+      Alert.alert("Login Failed", result.message);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#033337" barStyle="light-content" />
       <View style={styles.mainContentView}>
         <Image source={logo} style={styles.logoImg} resizeMode="contain" />
-      <View style={{ width: "100%", alignItems: "center" }}>
-        <Text style={styles.greetingText}>Hello, Let's get started!</Text>
+        <View style={{ width: "100%", alignItems: "center" }}>
+          <Text style={styles.greetingText}>Hello, Let's get started!</Text>
 
-        {/* Login Form */}
-
-        <View style={styles.loginFormView}>
-          <TextInput style={styles.textInput} placeholder="Email" />
-          <TextInput
-            style={styles.textInput}
-            placeholder="Password"
-            secureTextEntry
-          />
-          <TouchableOpacity style={styles.loginBtn} activeOpacity={0.5}>
-            <Text style={styles.loginBtnText}>LOGIN</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.forgotPasswordBtn}
-            activeOpacity={0.5}
-            onPress={() => router.replace('/(auth)/ForgotPassword')}
-          >
-            <Text style={styles.forgotPasswordBtnText}>Forgot Password</Text>
-          </TouchableOpacity>
+          {/* Login Form */}
+          <View style={styles.loginFormView}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextInput
+              style={styles.textInput}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            <TouchableOpacity style={styles.loginBtn} activeOpacity={0.5} onPress={handleLogin}>
+              <Text style={styles.loginBtnText}>
+                {loading ? 'Logging in...' : 'LOGIN'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.forgotPasswordBtn}
+              activeOpacity={0.5}
+              onPress={() => router.replace('/(auth)/ForgotPassword')}
+            >
+              <Text style={styles.forgotPasswordBtnText}>Forgot Password</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-      </View>
     </SafeAreaView>
-  )
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
+  container: {
     flex: 1,
     backgroundColor: "#033337",
   },
   mainContentView: {
     width: '100%',
     alignItems: 'center',
-    marginTop: responsive.margin(100)
+    marginTop: responsive.margin(100),
   },
   logoImg: {
     width: "70%",
@@ -92,6 +140,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontSize: responsive.fontSize(15),
   },
-})
+});
 
-export default Login
+export default Login;
