@@ -3,7 +3,6 @@ import { loginUser } from '@/services/api'; // 👈 API call
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
   Image,
   SafeAreaView,
   StatusBar,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import logo from "../../assets/images/logo.png";
 
 const Login = () => {
@@ -22,7 +22,11 @@ const Login = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      // Alert.alert("Error", "Please enter both email and password.");
+      Toast.show({
+        type: "error",
+        text1: "Please enter both email and password."
+      })
       return;
     }
 
@@ -36,11 +40,21 @@ const Login = () => {
       // Optionally: Save token to AsyncStorage or Context
       // await AsyncStorage.setItem('token', access_token);
 
-      Alert.alert("Login Successful", `Welcome ${name}`);
+      // Alert.alert("Login Successful", `Welcome ${name}`);
+      Toast.show({
+        type: "success",
+        text1: "Login Successful!",
+        text2: `Welcome ${name}`
+      })
       // Replace with your app's post-login route
       // router.replace("/(tabs)/home");
     } else {
-      Alert.alert("Login Failed", result.message);
+      // Alert.alert("Login Failed", result.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Login failed',
+        text2: result.message,
+      })
     }
   };
 
