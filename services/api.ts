@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 const BASE_URL = 'https://demo.vausm.co.in/vidzpro-iso/public/api';
@@ -19,6 +20,18 @@ interface LoginResponseFail {
   message: string;
 }
 
+interface UserDetailsResponse {
+  status: "1" | "0";
+  message: string;
+  data?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+  };
+}
+
 type LoginResponse = LoginResponseSuccess | LoginResponseFail;
 
 // ====== Forgot Password Response Type ======
@@ -38,6 +51,11 @@ export const loginUser = async (
       password,
     });
 
+    // Save token only if login is successful
+    if (response.data.success === 1 && 'data' in response.data) {
+      await AsyncStorage.setItem('access_token', response.data.data.access_token);
+    }
+
     return response.data;
   } catch (error) {
     console.error('Login API error:', error);
@@ -47,6 +65,7 @@ export const loginUser = async (
     };
   }
 };
+
 
 // ====== Forgot Password Function ======
 export const forgotPassword = async (email: string): Promise<{ success: number; message: string }> => {
@@ -64,6 +83,29 @@ export const forgotPassword = async (email: string): Promise<{ success: number; 
     console.error("Forgot Password API error:", error?.response?.data || error);
     return {
       success: 0,
+      message: "Something went wrong. Please try again.",
+    };
+  }
+};
+
+// ====== Get User Information Function ====
+export const getUserDetails = async (token: string): Promise<UserDetailsResponse> => {
+  try {
+    const response = await axios.post<UserDetailsResponse>(
+      `${BASE_URL}/user-details`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Get User API error:", error);
+    return {
+      status: "0",
       message: "Something went wrong. Please try again.",
     };
   }

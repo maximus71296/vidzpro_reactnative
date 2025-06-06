@@ -1,5 +1,6 @@
 import responsive from '@/responsive';
 import { loginUser } from '@/services/api'; // 👈 API call
+import { Ionicons } from '@expo/vector-icons'; // 👈 Make sure this is added
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -16,8 +17,9 @@ import Toast from 'react-native-toast-message';
 import logo from "../../assets/images/logo.png";
 
 const Login = () => {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [email, setEmail] = useState<string>('miemp.user@yopmail.com');
+  const [password, setPassword] = useState<string>('eDToUSra');
+  const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleLogin = async () => {
@@ -36,16 +38,13 @@ const Login = () => {
     if (result.success === 1) {
       const { access_token, name } = result.data;
 
-      // Optionally: Save token to AsyncStorage or Context
-      // await AsyncStorage.setItem('token', access_token);
-
       Toast.show({
         type: "success",
         text1: "Login Successful!",
         text2: `Welcome ${name}`
       })
-      // Replace with your app's post-login route
-      // router.replace("/(tabs)/home");
+
+      router.replace("/(app)/(tabs)/dashboard");
     } else {
       Toast.show({
         type: 'error',
@@ -73,18 +72,38 @@ const Login = () => {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TextInput
-              style={styles.textInput}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+
+            {/* Password Input with Eye Icon */}
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={secure}
+              />
+              <TouchableOpacity
+                onPress={() => setSecure(!secure)}
+                style={{
+                  position: 'absolute',
+                  right: 15,
+                  top: responsive.height(15),
+                }}
+              >
+                <Ionicons
+                  name={secure ? 'eye-off' : 'eye'}
+                  size={20}
+                  color="#888"
+                />
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity style={styles.loginBtn} activeOpacity={0.5} onPress={handleLogin}>
               <Text style={styles.loginBtnText}>
                 {loading ? 'Logging in...' : 'LOGIN'}
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.forgotPasswordBtn}
               activeOpacity={0.5}
