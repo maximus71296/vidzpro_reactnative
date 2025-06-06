@@ -111,3 +111,34 @@ export const getUserDetails = async (token: string): Promise<UserDetailsResponse
   }
 };
 
+// ====== Get Purchased Plan (Dashboard) ======
+export const getPurchasedPlan = async (token: string): Promise<{
+  status: number;
+  message: string;
+  subscription?: {
+    name: string;
+  };
+  subscription_image_url?: string;
+}> => {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/user/purchased-plan`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Dashboard API error:", error);
+    return {
+      status: 0,
+      message: "Something went wrong. Please try again.",
+    };
+  }
+};
+
+
