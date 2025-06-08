@@ -32,12 +32,44 @@ interface UserDetailsResponse {
   };
 }
 
+export interface VideoCategory {
+  id: number;
+  name: string;
+  type: string;
+}
+
+export interface VideoCategoryResponse {
+  status: string;
+  message: string;
+  data: VideoCategory[];
+}
+
 type LoginResponse = LoginResponseSuccess | LoginResponseFail;
 
 // ====== Forgot Password Response Type ======
 interface ForgotPasswordResponse {
   success: number;
   message: string;
+}
+
+export interface Video {
+  id: number;
+  video_title: string;
+  description: string;
+  video_url: string;
+  video_thumbnail: string;
+  assign_date: string;
+  is_completed: number;
+  completed_date: string | null;
+}
+
+export interface VideosByCategoryResponse {
+  status: string;
+  message: string;
+  data: {
+    current_page: number;
+    data: Video[];
+  };
 }
 
 // ====== Login Function ======
@@ -51,7 +83,6 @@ export const loginUser = async (
       password,
     });
 
-    // Save token only if login is successful
     if (response.data.success === 1 && 'data' in response.data) {
       await AsyncStorage.setItem('access_token', response.data.data.access_token);
     }
@@ -66,13 +97,10 @@ export const loginUser = async (
   }
 };
 
-
 // ====== Forgot Password Function ======
-export const forgotPassword = async (email: string): Promise<{ success: number; message: string }> => {
+export const forgotPassword = async (email: string): Promise<ForgotPasswordResponse> => {
   try {
-    const response = await axios.post(`${BASE_URL}/forgot-password`, {
-      email,
-    }, {
+    const response = await axios.post(`${BASE_URL}/forgot-password`, { email }, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -88,7 +116,7 @@ export const forgotPassword = async (email: string): Promise<{ success: number; 
   }
 };
 
-// ====== Get User Information Function ====
+// ====== Get User Information ======
 export const getUserDetails = async (token: string): Promise<UserDetailsResponse> => {
   try {
     const response = await axios.post<UserDetailsResponse>(
@@ -111,7 +139,7 @@ export const getUserDetails = async (token: string): Promise<UserDetailsResponse
   }
 };
 
-// ====== Get Purchased Plan (Dashboard) ======
+// ====== Get Purchased Plan ======
 export const getPurchasedPlan = async (token: string): Promise<{
   status: number;
   message: string;
@@ -138,6 +166,59 @@ export const getPurchasedPlan = async (token: string): Promise<{
       status: 0,
       message: "Something went wrong. Please try again.",
     };
+  }
+};
+
+// ====== Get Video Categories ======
+export const getVideoCategories = async (): Promise<VideoCategoryResponse> => {
+  const token = await AsyncStorage.getItem('access_token');
+  if (!token) throw new Error('Token not found');
+
+  try {
+    const response = await axios.post(`${BASE_URL}/get-video-categories`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error fetching video categories:", error);
+    throw error;
+  }
+};
+
+
+// ====== Get Videos by Category ======
+export const getVideosByCategory = async (
+  categoryType: string
+): Promise<VideosByCategoryResponse> => {
+  const token = await AsyncStorage.getItem("access_token");
+  if (!token) throw new Error("Token not found");
+
+  try {
+    console.log("📦 Sending category type:", categoryType);
+
+    const response = await axios.post(
+      `${BASE_URL}/videos-by-category`,
+      { category: categoryType }, // send type string instead of numeric id
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error("❌ API Error:", error.response?.data || error.message);
+    } else {
+      console.error("❌ Unexpected Error:", error);
+    }
+    throw error;
   }
 };
 

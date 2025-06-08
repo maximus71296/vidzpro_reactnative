@@ -10,7 +10,9 @@ import {
   SafeAreaView,
   StatusBar,
   StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
 } from "react-native";
 import Toast from "react-native-toast-message";
 
@@ -53,16 +55,28 @@ const Dashboard = () => {
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: 0 }]}>
+      <View style={styles.header}>
+        <Text style={styles.headingText}>Dashboard</Text>
+      </View>
       {loading ? (
-        <ActivityIndicator size="large" color="#033337" style={{ marginTop: 100 }} />
+        <ActivityIndicator
+          size="large"
+          color="#033337"
+          style={{ marginTop: 100 }}
+        />
       ) : (
-        <TouchableOpacity activeOpacity={0.7}   onPress={() => router.push("/(app)/(tabs)/myvideos")}>
-          <ImageBackground
-            source={imageUrl ? { uri: imageUrl } : undefined}
-            style={styles.imageButton}
-            resizeMode="cover"
-          />
-        </TouchableOpacity>
+        <View style={{ width: "100%", alignItems: "center" }}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push("/(app)/(tabs)/myvideos")}
+          >
+            <ImageBackground
+              source={imageUrl ? { uri: imageUrl } : undefined}
+              style={styles.imageButton}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -71,8 +85,20 @@ const Dashboard = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+  },
+  header: {
+    alignItems: "center",
+    gap: 20,
+    backgroundColor: "#033337",
+    paddingVertical: responsive.padding(15),
+    paddingHorizontal: responsive.padding(15),
+    flexDirection: "row",
+  },
+  headingText: {
+    color: "#fff",
+    fontSize: responsive.fontSize(18),
+    fontFamily: "NotoSansSemiBold",
   },
   imageButton: {
     width: responsive.width(250),
