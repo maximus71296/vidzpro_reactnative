@@ -7,13 +7,13 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context"; // ✅ More reliable
 import Toast from "react-native-toast-message";
 import userImage from "../../../assets/images/user.png";
 
@@ -92,8 +92,8 @@ const Profile = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#033337" />
       <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#033337" />
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headingText}>Profile</Text>
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: responsive.margin(20),
+    marginBottom: responsive.margin(10),
   },
   logoutText: {
     color: "#fff",
