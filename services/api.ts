@@ -222,4 +222,38 @@ export const getVideosByCategory = async (
   }
 };
 
+// ====== Generate Certificate ======
+export const generateCertificate = async (type: "toolbox" | "isovideos") => {
+  try {
+    const userData = await AsyncStorage.getItem("user");
+    if (!userData) {
+      throw new Error("No user data found");
+    }
+
+    const parsed = JSON.parse(userData);
+    const token = parsed.token || parsed.access_token;
+
+    if (!token) {
+      throw new Error("Token not found in user data");
+    }
+
+    const response = await axios.get(`${BASE_URL}/generate-certificate/${type}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("generateCertificate error:", error);
+    return {
+      status: 0,
+      message: "Failed to generate certificate",
+    };
+  }
+};
+
+
+
 
