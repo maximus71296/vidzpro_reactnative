@@ -5,7 +5,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  ImageBackground,
+  FlatList,
+  Image,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -14,7 +15,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import user from "../../../assets/images/user.png";
+import userImage from "../../../assets/images/user.png";
 
 const Profile = () => {
   const [loading, setLoading] = useState(true);
@@ -36,19 +37,17 @@ const Profile = () => {
             text1: "Token Missing",
             text2: "Please login again.",
           });
-          setLoading(false);
           return;
         }
 
         const res = await getUserDetails(accessToken);
-
         if (res.status === "1" && res.data) {
           setUserData(res.data);
         } else {
           Toast.show({
             type: "error",
             text1: "Failed to load profile",
-            text2: res.message,
+            text2: res.message || "Try again later",
           });
         }
       } catch (error) {
@@ -65,88 +64,79 @@ const Profile = () => {
     fetchUserData();
   }, []);
 
+  const formatPhoneNumber = (phone?: string): string => {
+    if (!phone || phone.length !== 10) return phone || "N/A";
+    return `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
+  };
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem("access_token");
+    Toast.show({ type: "success", text1: "Logged out" });
+    // You can also navigate to login page here
+  };
+
+  const infoFields = [
+    { label: "Username", value: `@${userData?.first_name?.toLowerCase() || "unknown"}` },
+    { label: "Name", value: `${userData?.first_name || ""} ${userData?.last_name || ""}` },
+    { label: "Phone", value: formatPhoneNumber(userData?.phone) },
+    { label: "Email", value: userData?.email || "N/A" },
+  ];
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator
-          size="large"
-          color="#033337"
-          style={{ marginTop: 100 }}
-        />
+      <SafeAreaView style={styles.centered}>
+        <ActivityIndicator size="large" color="#033337" />
       </SafeAreaView>
     );
   }
-
-  const formatPhoneNumber = (phone: string | undefined): string => {
-    if (!phone || phone.length !== 10) return phone || "N/A";
-
-    return `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
-  };
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#033337" />
       <SafeAreaView style={styles.container}>
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headingText}>Profile</Text>
         </View>
 
+        {/* Profile Image + Edit Button */}
         <View style={styles.mainContentView}>
-          <ImageBackground
-            source={user}
-            style={styles.imageCircle}
-            imageStyle={{ borderRadius: responsive.borderRadius(75) }}
-          >
+          <View style={styles.profileImageContainer}>
+            <Image source={userImage} style={styles.profileImage} />
             <TouchableOpacity
               style={styles.cameraButton}
               activeOpacity={0.7}
-              onPress={() => console.log("Change image")}
+              onPress={() => console.log("Change Image")}
             >
-              <FontAwesome
-                name="camera"
-                size={responsive.width(20)}
-                color="#333"
-              />
+              <FontAwesome name="camera" size={20} color="#333" />
             </TouchableOpacity>
-          </ImageBackground>
+          </View>
 
-          <Text style={styles.mainContentHeadingText}>
-            Personal Information
-          </Text>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
 
-          <View style={styles.formView}>
-            <View style={styles.formIndividualSection}>
-              <Text style={styles.formLabel}>Username</Text>
-              <Text style={styles.formValue}>
-                @{userData?.first_name?.toLowerCase() || "unknown"}
-              </Text>
-            </View>
-
-            <View style={styles.formIndividualSection}>
-              <Text style={styles.formLabel}>Name</Text>
-              <Text style={styles.formValue}>
-                {userData?.first_name} {userData?.last_name}
-              </Text>
-            </View>
-
-            <View style={styles.formIndividualSection}>
-              <Text style={styles.formLabel}>Phone</Text>
-              <Text style={styles.formValue}>
-                {formatPhoneNumber(userData?.phone)}
-              </Text>
-            </View>
-
-            <View
-              style={[styles.formIndividualSection, { borderBottomWidth: 0 }]}
-            >
-              <Text style={styles.formLabel}>Email</Text>
-              <Text style={styles.formValue}>{userData?.email}</Text>
-            </View>
+          {/* Information List */}
+          <View style={styles.formContainer}>
+            <FlatList
+              data={infoFields}
+              keyExtractor={(item) => item.label}
+              renderItem={({ item, index }) => (
+                <View
+                  style={[
+                    styles.formRow,
+                    index === infoFields.length - 1 && { borderBottomWidth: 0 },
+                  ]}
+                >
+                  <Text style={styles.label}>{item.label}</Text>
+                  <Text style={styles.value}>{item.value}</Text>
+                </View>
+              )}
+            />
           </View>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
+        {/* Logout Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </SafeAreaView>
     </>
@@ -158,13 +148,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-  header: {
+  centered: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    gap: 20,
-    backgroundColor: "#033337",
-    paddingVertical: responsive.padding(15),
-    paddingHorizontal: responsive.padding(15),
+    backgroundColor: "#fff",
+  },
+  header: {
     flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#033337",
+    padding: responsive.padding(15),
   },
   headingText: {
     color: "#fff",
@@ -172,17 +166,23 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSansSemiBold",
   },
   mainContentView: {
-    width: "100%",
     alignItems: "center",
-    marginTop: responsive.margin(40),
+    marginTop: responsive.margin(30),
+    flex: 1,
   },
-  imageCircle: {
+  profileImageContainer: {
     width: responsive.width(150),
     height: responsive.height(150),
-    alignItems: "center",
-    justifyContent: "center",
     borderRadius: responsive.borderRadius(75),
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
     position: "relative",
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   cameraButton: {
     position: "absolute",
@@ -191,54 +191,56 @@ const styles = StyleSheet.create({
     width: responsive.width(40),
     height: responsive.width(40),
     backgroundColor: "#fff",
-    borderRadius: responsive.width(20),
-    alignItems: "center",
+    borderRadius: 20,
     justifyContent: "center",
+    alignItems: "center",
     elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
+    shadowRadius: 2,
   },
-  mainContentHeadingText: {
+  sectionTitle: {
     marginTop: responsive.margin(20),
-    fontWeight: "500",
     fontSize: responsive.fontSize(17),
+    fontWeight: "600",
+    color: "#000",
   },
-  formView: {
-    backgroundColor: "#dddddd",
+  formContainer: {
     width: "90%",
+    backgroundColor: "#eeeeee",
+    borderRadius: responsive.borderRadius(10),
     marginTop: responsive.margin(20),
-    borderRadius: responsive.borderRadius(8),
+    overflow: "hidden",
   },
-  formIndividualSection: {
-    gap: 7,
+  formRow: {
+    padding: responsive.padding(12),
     borderBottomWidth: 1,
-    borderBottomColor: "gray",
-    padding: responsive.padding(10),
+    borderBottomColor: "#ccc",
   },
-  formLabel: {
-    fontWeight: "500",
+  label: {
     fontSize: responsive.fontSize(13),
     color: "gray",
+    fontWeight: "500",
   },
-  formValue: {
+  value: {
     fontSize: responsive.fontSize(15),
+    marginTop: 3,
   },
   logoutButton: {
-    position: "absolute",
-    bottom: 10,
     width: "90%",
-    backgroundColor: "#033337",
     alignSelf: "center",
-    padding: responsive.padding(15),
-    borderRadius: responsive.borderRadius(25),
+    backgroundColor: "#033337",
+    paddingVertical: responsive.padding(15),
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: responsive.margin(20),
   },
-  logoutButtonText: {
+  logoutText: {
     color: "#fff",
     fontSize: responsive.fontSize(15),
+    fontWeight: "500",
   },
 });
 
