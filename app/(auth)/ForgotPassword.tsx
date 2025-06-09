@@ -1,5 +1,6 @@
 import responsive from "@/responsive";
 import { forgotPassword } from "@/services/api";
+import Entypo from "@expo/vector-icons/Entypo";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -38,7 +39,7 @@ const ForgotPassword = () => {
       if (response.success === 1) {
         Toast.show({
           type: "success",
-          text1: 'Link Sent!',
+          text1: "Link Sent!",
           text2: response.message,
         });
 
@@ -67,6 +68,13 @@ const ForgotPassword = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#033337" barStyle="light-content" />
+      <TouchableOpacity
+        style={styles.backButton}
+        activeOpacity={0.1}
+        onPress={() => router.back()}
+      >
+        <Entypo name="arrow-with-circle-left" size={35} color="#F9BC11" />
+      </TouchableOpacity>
       <View style={styles.mainContentView}>
         <Image source={logo} style={styles.logoImg} resizeMode="contain" />
         <View style={{ width: "100%", alignItems: "center" }}>
@@ -83,10 +91,7 @@ const ForgotPassword = () => {
               autoCorrect={false}
             />
             <TouchableOpacity
-              style={[
-                styles.loginBtn,
-                { opacity: loading ? 0.6 : 1 },
-              ]}
+              style={[styles.loginBtn, { opacity: loading ? 0.6 : 1 }]}
               activeOpacity={0.7}
               onPress={handleForgotPassword}
               disabled={loading}
@@ -106,6 +111,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#033337",
+  },
+  backButton: {
+    position: "absolute",
+    left: 50,
+    top: 50,
   },
   mainContentView: {
     width: "100%",

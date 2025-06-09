@@ -6,14 +6,13 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
-  Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context"; // ✅ More reliable
 import Toast from "react-native-toast-message";
 
 const Dashboard = () => {
@@ -54,38 +53,43 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: 0 }]}>
-      <View style={styles.header}>
-        <Text style={styles.headingText}>Dashboard</Text>
-      </View>
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#033337"
-          style={{ marginTop: 100 }}
-        />
-      ) : (
-        <View style={{ width: "100%", alignItems: "center" }}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push("/(app)/(tabs)/myvideos")}
-          >
-            <ImageBackground
-              source={imageUrl ? { uri: imageUrl } : undefined}
-              style={styles.imageButton}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
+    <>
+      {/* ✅ Ensures status bar is styled properly */}
+      <StatusBar barStyle="light-content" backgroundColor="#033337" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headingText}>Dashboard</Text>
         </View>
-      )}
-    </SafeAreaView>
+
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#033337"
+            style={{ marginTop: 100 }}
+          />
+        ) : (
+          <View style={{ width: "100%", alignItems: "center" }}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push("/(app)/(tabs)/myvideos")}
+            >
+              <ImageBackground
+                source={imageUrl ? { uri: imageUrl } : undefined}
+                style={styles.imageButton}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    backgroundColor: "#fff", // Prevent transparent background issues
   },
   header: {
     alignItems: "center",

@@ -11,14 +11,13 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context"; // ✅ More reliable
 import Toast from "react-native-toast-message";
 
 // Define type for videos
@@ -132,7 +131,8 @@ const MyVideos: React.FC = () => {
       }
 
       if (res.status === 1 && res.file_url) {
-        const filename = res.file_url.split("/").pop() ?? `certificate_${type}.pdf`;
+        const filename =
+          res.file_url.split("/").pop() ?? `certificate_${type}.pdf`;
         const docDir = FileSystem.documentDirectory;
 
         if (!docDir) throw new Error("FileSystem.documentDirectory is null");
@@ -156,7 +156,10 @@ const MyVideos: React.FC = () => {
           }`,
         });
       } else {
-        console.log("❌ Certificate generation failed or file_url missing:", res);
+        console.log(
+          "❌ Certificate generation failed or file_url missing:",
+          res
+        );
         throw new Error("Certificate generation failed or file_url missing.");
       }
     } catch (err) {
@@ -181,156 +184,182 @@ const MyVideos: React.FC = () => {
   });
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: 0 }]}>
-      <View style={styles.header}>
-        <Text style={styles.headingText}>My Videos</Text>
-        <View style={styles.dateView}>
-          <Text style={styles.dateText}>Today: {formattedDate}</Text>
-        </View>
-      </View>
-
-      {/* View Tutorials & Certificate */}
-      <View style={styles.buttonView}>
-        <TouchableOpacity
-          style={styles.viewTutorialsButtonView}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.viewTutorialsButtonText}>View Tutorials</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.certificateDownloadButtonView}
-          activeOpacity={0.7}
-          onPress={() => setShowDropdown((prev) => !prev)}
-        >
-          <Text style={styles.certificateDownloadButtonText}>
-            Download Certificate
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Category Tabs */}
-      <View style={styles.buttonView}>
-        {categories.map((cat) => {
-          const isActive = selectedCategory?.id === cat.id;
-          return (
-            <TouchableOpacity
-              key={cat.id}
-              style={[
-                styles.buttonBase,
-                { backgroundColor: isActive ? primaryColor : secondaryColor },
-              ]}
-              onPress={() => setSelectedCategory(cat)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={{
-                  color: isActive ? secondaryColor : primaryColor,
-                  fontSize: 14,
-                  fontWeight: "500",
-                }}
-              >
-                {cat.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Show API Message and Category Details */}
-      <View style={{ padding: 10 }}>
-        {message && (
-          <Text
-            style={{
-              fontSize: 16,
-              marginBottom: 8,
-              color: "#222",
-              fontWeight: "600",
-            }}
-          >
-            📢 {message}
-          </Text>
-        )}
-      </View>
-
-      {/* Video List */}
-      <View style={{ paddingHorizontal: 20, flex: 1 }}>
-        {loading ? (
-          <ActivityIndicator size="large" color={primaryColor} />
-        ) : error ? (
-          <Text style={{ color: "red", fontSize: 16 }}>{error}</Text>
-        ) : (
-          <FlatList
-            showsVerticalScrollIndicator={false}
-            data={videos}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View style={{ marginBottom: 20 }}>
-                <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-                  {item.video_title}
-                </Text>
-                <Text numberOfLines={2}>
-                  {item.description.replace(/<[^>]+>/g, "")}
-                </Text>
-                <View style={{ height: 10 }} />
-                <View
-                  style={{
-                    width: "100%",
-                    height: 180,
-                    borderRadius: 10,
-                    overflow: "hidden",
-                  }}
-                >
-                  <Image
-                    source={{ uri: item.video_thumbnail }}
-                    style={styles.videoThumbnail}
-                    resizeMode="cover"
-                  />
-                </View>
-              </View>
-            )}
-          />
-        )}
-      </View>
-
-      {/* Certificate Download Dropdown */}
-      {showDropdown && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Download Certificate</Text>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => downloadCertificate("toolbox")}
-              disabled={downloading}
-            >
-              <Text style={styles.modalOptionText}>Tool Box</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => downloadCertificate("isovideos")}
-              disabled={downloading}
-            >
-              <Text style={styles.modalOptionText}>ISO 9001</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setShowDropdown(false)}
-              style={styles.modalCancel}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#033337" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headingText}>My Videos</Text>
+          <View style={styles.dateView}>
+            <Text style={styles.dateText}>Today: {formattedDate}</Text>
           </View>
         </View>
-      )}
-    </SafeAreaView>
+
+        {/* View Tutorials & Certificate */}
+        <View style={styles.buttonView}>
+          <TouchableOpacity
+            style={styles.viewTutorialsButtonView}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.viewTutorialsButtonText}>View Tutorials</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.certificateDownloadButtonView}
+            activeOpacity={0.7}
+            onPress={() => setShowDropdown((prev) => !prev)}
+          >
+            <Text style={styles.certificateDownloadButtonText}>
+              Download Certificate
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Category Tabs */}
+        <View style={styles.buttonView}>
+          {categories.map((cat) => {
+            const isActive = selectedCategory?.id === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={[
+                  styles.buttonBase,
+                  { backgroundColor: isActive ? primaryColor : secondaryColor },
+                ]}
+                onPress={() => setSelectedCategory(cat)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={{
+                    color: isActive ? secondaryColor : primaryColor,
+                    fontSize: 14,
+                    fontWeight: "500",
+                  }}
+                >
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Show API Message and Category Details */}
+        <View style={{ padding: 10 }}></View>
+
+        {/* Video List */}
+        <View style={{ paddingHorizontal: 20, flex: 1 }}>
+          {loading ? (
+            <ActivityIndicator size="large" color={primaryColor} />
+          ) : error ? (
+            <Text style={{ color: "red", fontSize: 16 }}>{error}</Text>
+          ) : (
+            <FlatList
+              showsVerticalScrollIndicator={false}
+              data={videos}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.videoCardView}>
+                  {/* THUMBNAIL FIRST */}
+                  <View
+                    style={{
+                      width: "100%",
+                      height: responsive.height(200),
+                      borderRadius: responsive.borderRadius(10),
+                      overflow: "hidden",
+                      marginBottom: responsive.margin(10),
+                    }}
+                  >
+                    <Image
+                      source={{ uri: item.video_thumbnail }}
+                      style={styles.videoThumbnail}
+                      resizeMode="cover"
+                    />
+                  </View>
+
+                  {/* TITLE */}
+                  <Text
+                    style={{
+                      fontSize: responsive.fontSize(16),
+                      fontWeight: "bold",
+                      marginBottom: responsive.margin(5),
+                    }}
+                  >
+                    {item.video_title}
+                  </Text>
+
+                  {/* DESCRIPTION */}
+                  <View style={{ paddingHorizontal: 10 }}>
+                    {item.description
+                      .replace(/<[^>]+>/g, "") // Remove HTML tags
+                      .split(/[\n•-]/) // Split on newline or bullet-like characters
+                      .map((point, index) => {
+                        const trimmed = point.trim();
+                        if (!trimmed) return null;
+                        return (
+                          <View
+                            key={index}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "flex-start",
+                              marginBottom: 4,
+                            }}
+                          >
+                            <Text style={{ fontSize: 14, lineHeight: 20 }}>
+                              •{" "}
+                            </Text>
+                            <Text
+                              style={{ flex: 1, fontSize: 14, lineHeight: 20 }}
+                            >
+                              {trimmed}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                  </View>
+                </View>
+              )}
+            />
+          )}
+        </View>
+
+        {/* Certificate Download Dropdown */}
+        {showDropdown && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Download Certificate</Text>
+
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={() => downloadCertificate("toolbox")}
+                disabled={downloading}
+              >
+                <Text style={styles.modalOptionText}>Tool Box</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={() => downloadCertificate("isovideos")}
+                disabled={downloading}
+              >
+                <Text style={styles.modalOptionText}>ISO 9001</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowDropdown(false)}
+                style={styles.modalCancel}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    backgroundColor: "#eeeeee",
   },
   header: {
     alignItems: "center",
@@ -450,6 +479,17 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 14,
     color: "#666",
+  },
+  videoCardView: {
+    marginBottom: responsive.margin(20),
+    padding: responsive.padding(10),
+    borderRadius: responsive.borderRadius(10),
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
 

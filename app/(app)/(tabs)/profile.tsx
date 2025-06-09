@@ -6,7 +6,6 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
-  Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -69,82 +68,95 @@ const Profile = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#033337" style={{ marginTop: 100 }} />
+        <ActivityIndicator
+          size="large"
+          color="#033337"
+          style={{ marginTop: 100 }}
+        />
       </SafeAreaView>
     );
   }
 
   const formatPhoneNumber = (phone: string | undefined): string => {
-  if (!phone || phone.length !== 10) return phone || "N/A";
+    if (!phone || phone.length !== 10) return phone || "N/A";
 
-  return `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
-};
+    return `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: 0 }]}>
-      <View style={styles.header}>
-        <Text style={styles.headingText}>Profile</Text>
-      </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#033337" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headingText}>Profile</Text>
+        </View>
 
-      <View style={styles.mainContentView}>
-        <ImageBackground
-          source={user}
-          style={styles.imageCircle}
-          imageStyle={{ borderRadius: responsive.borderRadius(75) }}
-        >
-          <TouchableOpacity
-            style={styles.cameraButton}
-            activeOpacity={0.7}
-            onPress={() => console.log("Change image")}
+        <View style={styles.mainContentView}>
+          <ImageBackground
+            source={user}
+            style={styles.imageCircle}
+            imageStyle={{ borderRadius: responsive.borderRadius(75) }}
           >
-            <FontAwesome
-              name="camera"
-              size={responsive.width(20)}
-              color="#333"
-            />
-          </TouchableOpacity>
-        </ImageBackground>
+            <TouchableOpacity
+              style={styles.cameraButton}
+              activeOpacity={0.7}
+              onPress={() => console.log("Change image")}
+            >
+              <FontAwesome
+                name="camera"
+                size={responsive.width(20)}
+                color="#333"
+              />
+            </TouchableOpacity>
+          </ImageBackground>
 
-        <Text style={styles.mainContentHeadingText}>Personal Information</Text>
+          <Text style={styles.mainContentHeadingText}>
+            Personal Information
+          </Text>
 
-        <View style={styles.formView}>
-          <View style={styles.formIndividualSection}>
-            <Text style={styles.formLabel}>Username</Text>
-            <Text style={styles.formValue}>
-              @{userData?.first_name?.toLowerCase() || "unknown"}
-            </Text>
-          </View>
+          <View style={styles.formView}>
+            <View style={styles.formIndividualSection}>
+              <Text style={styles.formLabel}>Username</Text>
+              <Text style={styles.formValue}>
+                @{userData?.first_name?.toLowerCase() || "unknown"}
+              </Text>
+            </View>
 
-          <View style={styles.formIndividualSection}>
-            <Text style={styles.formLabel}>Name</Text>
-            <Text style={styles.formValue}>
-              {userData?.first_name} {userData?.last_name}
-            </Text>
-          </View>
+            <View style={styles.formIndividualSection}>
+              <Text style={styles.formLabel}>Name</Text>
+              <Text style={styles.formValue}>
+                {userData?.first_name} {userData?.last_name}
+              </Text>
+            </View>
 
-          <View style={styles.formIndividualSection}>
-            <Text style={styles.formLabel}>Phone</Text>
-            <Text style={styles.formValue}>{formatPhoneNumber(userData?.phone)}</Text>
-          </View>
+            <View style={styles.formIndividualSection}>
+              <Text style={styles.formLabel}>Phone</Text>
+              <Text style={styles.formValue}>
+                {formatPhoneNumber(userData?.phone)}
+              </Text>
+            </View>
 
-          <View style={[styles.formIndividualSection, { borderBottomWidth: 0 }]}>
-            <Text style={styles.formLabel}>Email</Text>
-            <Text style={styles.formValue}>{userData?.email}</Text>
+            <View
+              style={[styles.formIndividualSection, { borderBottomWidth: 0 }]}
+            >
+              <Text style={styles.formLabel}>Email</Text>
+              <Text style={styles.formValue}>{userData?.email}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <TouchableOpacity style={styles.logoutButton}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+        <TouchableOpacity style={styles.logoutButton}>
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    backgroundColor: "#fff",
   },
   header: {
     alignItems: "center",
