@@ -1,6 +1,5 @@
 import responsive from "@/responsive";
 import { forgotPassword } from "@/services/api";
-import Entypo from "@expo/vector-icons/Entypo";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -15,6 +14,7 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 
+import { Ionicons } from "@expo/vector-icons";
 import logo from "../../assets/images/logo.png";
 
 const ForgotPassword = () => {
@@ -68,13 +68,6 @@ const ForgotPassword = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#033337" barStyle="light-content" />
-      <TouchableOpacity
-        style={styles.backButton}
-        activeOpacity={0.1}
-        onPress={() => router.back()}
-      >
-        <Entypo name="arrow-with-circle-left" size={35} color="#F9BC11" />
-      </TouchableOpacity>
       <View style={styles.mainContentView}>
         <Image source={logo} style={styles.logoImg} resizeMode="contain" />
         <View style={{ width: "100%", alignItems: "center" }}>
@@ -101,6 +94,14 @@ const ForgotPassword = () => {
               </Text>
             </TouchableOpacity>
           </View>
+          <View style={styles.backButtonView}>
+            <TouchableOpacity
+            activeOpacity={0.5}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="chevron-back" size={35} color="#F9BC11" />
+          </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -112,10 +113,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#033337",
   },
-  backButton: {
-    position: "absolute",
-    left: 50,
-    top: 50,
+  backButtonView: {
+    marginTop: responsive.margin(50), 
+    width: '100%', 
+    alignItems: 'center'
   },
   mainContentView: {
     width: "100%",

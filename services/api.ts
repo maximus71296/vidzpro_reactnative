@@ -254,6 +254,26 @@ export const generateCertificate = async (type: "toolbox" | "isovideos") => {
   }
 };
 
+// ====== Logout Function ======
+export const logout = async (navigation: any) => {
+  try {
+    // Remove token and user data
+    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('user');
+
+    // Optionally clear everything
+    // await AsyncStorage.clear();
+
+    // Navigate to login screen
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'login' }],
+    });
+  } catch (error) {
+    console.error('Error during logout:', error);
+  }
+};
+
 
 
 

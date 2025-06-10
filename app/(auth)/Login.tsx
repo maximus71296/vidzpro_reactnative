@@ -17,8 +17,8 @@ import Toast from 'react-native-toast-message';
 import logo from "../../assets/images/logo.png";
 
 const Login = () => {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [email, setEmail] = useState<string>('miemp.user@yopmail.com');
+  const [password, setPassword] = useState<string>('eDToUSra');
   const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState<boolean>(false);
 

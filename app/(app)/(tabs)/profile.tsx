@@ -2,9 +2,11 @@ import responsive from "@/responsive";
 import { getUserDetails } from "@/services/api";
 import { FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router"; // ✅ Expo Router navigation
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   StatusBar,
@@ -13,12 +15,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // ✅ More reliable
+import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import userImage from "../../../assets/images/user.png";
 
 const Profile = () => {
   const [loading, setLoading] = useState(true);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [userData, setUserData] = useState<null | {
     first_name: string;
     last_name: string;
@@ -37,6 +40,7 @@ const Profile = () => {
             text1: "Token Missing",
             text2: "Please login again.",
           });
+          router.replace("/(auth)/Login");
           return;
         }
 
@@ -69,15 +73,61 @@ const Profile = () => {
     return `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
   };
 
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("access_token");
-    Toast.show({ type: "success", text1: "Logged out" });
-    // You can also navigate to login page here
+  const handleLogout = () => {
+    if (!userData?.first_name) {
+      Toast.show({
+        type: "error",
+        text1: "User data missing",
+        text2: "Cannot logout without user name",
+      });
+      return;
+    }
+
+    Alert.alert(
+      `Dear ${userData.first_name},`,
+      "Do you wish to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            setLogoutLoading(true);
+
+            setTimeout(async () => {
+              try {
+                await AsyncStorage.removeItem("access_token");
+                Toast.show({
+                  type: "success",
+                  text1: "Logged out",
+                });
+                router.replace("/(auth)/Login"); // ✅ Expo Router
+              } catch (error) {
+                Toast.show({
+                  type: "error",
+                  text1: "Logout Failed",
+                  text2: "Please try again.",
+                });
+              } finally {
+                setLogoutLoading(false);
+              }
+            }, 2000); // Delay of 2 seconds
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const infoFields = [
-    { label: "Username", value: `@${userData?.first_name?.toLowerCase() || "unknown"}` },
-    { label: "Name", value: `${userData?.first_name || ""} ${userData?.last_name || ""}` },
+    {
+      label: "First Name",
+      value: `${userData?.first_name?.toLowerCase() || "unknown"}`,
+    },
+    { label: "Last Name", value: `${userData?.last_name || ""}` },
     { label: "Phone", value: formatPhoneNumber(userData?.phone) },
     { label: "Email", value: userData?.email || "N/A" },
   ];
@@ -94,6 +144,7 @@ const Profile = () => {
     <>
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#033337" />
+
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headingText}>Profile</Text>
@@ -135,9 +186,23 @@ const Profile = () => {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        {logoutLoading ? (
+          <View
+            style={[
+              styles.logoutButton,
+              { flexDirection: "row", justifyContent: "center" },
+            ]}
+          >
+            <ActivityIndicator color="#fff" />
+            <Text style={[styles.logoutText, { marginLeft: 10 }]}>
+              Logging out...
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity activeOpacity={0.7} style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
     </>
   );
@@ -235,7 +300,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: responsive.margin(10),
   },
   logoutText: {
     color: "#fff",

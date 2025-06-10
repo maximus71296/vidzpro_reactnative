@@ -28,6 +28,8 @@ type VideoItem = {
   video_url: string;
   description: string;
   is_completed: number;
+  assign_date: string;
+  completed_date: string | null;
 };
 
 // Map your category strings to allowed certificate types
@@ -48,8 +50,8 @@ const MyVideos: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const primaryColor = "#033337";
-  const secondaryColor = "#F9BC11";
+  const primaryColor = "#F9BC11";
+  const secondaryColor = "#033337";
 
   // Fetch video categories from API
   const fetchCategories = async () => {
@@ -175,13 +177,57 @@ const MyVideos: React.FC = () => {
     }
   };
 
-  const today = new Date();
+  const formatSmartDate = (
+    dateInput?: string | number | Date | null
+  ): string => {
+    let dateToFormat: Date;
+    let options: Intl.DateTimeFormatOptions;
 
-  const formattedDate = today.toLocaleDateString("en-US", {
-    month: "long",
-    day: "2-digit",
-    year: "numeric",
-  });
+    try {
+      // Case 1: A date was provided (from your API).
+      if (dateInput) {
+        // Create a Date object from the input.
+        // The .replace is a safety measure for strings like "2025-05-15 13:37:40"
+        const safeInput =
+          typeof dateInput === "string"
+            ? dateInput.replace(" ", "T")
+            : dateInput;
+        dateToFormat = new Date(safeInput);
+
+        // Use the options that include time.
+        options = {
+          year: "numeric",
+          month: "short", // "May" -> "May", "December" -> "Dec"
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false, // Use 24-hour format as in your original function
+        };
+      }
+      // Case 2: No date was provided, so use today's date.
+      else {
+        dateToFormat = new Date();
+
+        // Use the date-only options.
+        options = {
+          year: "numeric",
+          month: "long",
+          day: "2-digit",
+        };
+      }
+
+      // Final check to ensure the date is valid before formatting.
+      if (isNaN(dateToFormat.getTime())) {
+        throw new Error("Invalid date created.");
+      }
+    } catch (error) {
+      console.error("Date formatting failed for input:", dateInput, error);
+      return "Invalid Date"; // Fallback for any errors
+    }
+
+    // Use toLocaleString, which works for both date-only and date-with-time.
+    return dateToFormat.toLocaleString("en-US", options);
+  };
 
   return (
     <>
@@ -190,7 +236,7 @@ const MyVideos: React.FC = () => {
         <View style={styles.header}>
           <Text style={styles.headingText}>My Videos</Text>
           <View style={styles.dateView}>
-            <Text style={styles.dateText}>Today: {formattedDate}</Text>
+            <Text style={styles.dateText}>Today: {formatSmartDate()}</Text>
           </View>
         </View>
 
@@ -313,6 +359,21 @@ const MyVideos: React.FC = () => {
                           </View>
                         );
                       })}
+                  </View>
+                  <View style={styles.assignedDateView}>
+                    <Text style={styles.assignedDateText}>
+                      Assigned: {formatSmartDate(item.assign_date)}
+                    </Text>
+
+                    {item.is_completed === 0 ? (
+                      <Text style={styles.assignedDateText}>
+                        Not completed ❌
+                      </Text>
+                    ) : (
+                      <Text style={styles.assignedDateText}>
+                        Completed: {formatSmartDate(item.completed_date)} ✅
+                      </Text>
+                    )}
                   </View>
                 </View>
               )}
@@ -490,6 +551,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  assignedDateView: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    marginTop: responsive.margin(10),
+    paddingTop: responsive.padding(5),
+  },
+  assignedDateText: {
+    fontWeight: "500",
+    fontSize: responsive.fontSize(12),
   },
 });
 
