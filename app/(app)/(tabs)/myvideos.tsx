@@ -389,7 +389,7 @@ const MyVideos: React.FC = () => {
 
               <TouchableOpacity
                 style={styles.modalOption}
-                onPress={() => downloadCertificate("toolbox")}
+                onPress={() => downloadCertificate("Toolbox")}
                 disabled={downloading}
               >
                 <Text style={styles.modalOptionText}>Tool Box</Text>
