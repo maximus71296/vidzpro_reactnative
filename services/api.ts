@@ -72,6 +72,19 @@ export interface VideosByCategoryResponse {
   };
 }
 
+export interface VideoDetailResponse {
+  status: "1" | "0";
+  message: string;
+  data: {
+    id: number;
+    title: string;
+    description: string;
+    url: string;
+    key_points: string;
+    faqs: any[];
+  };
+}
+
 // ====== Login Function ======
 export const loginUser = async (
   email: string,
@@ -274,6 +287,34 @@ export const logout = async (navigation: any) => {
     });
   } catch (error) {
     console.error('Error during logout:', error);
+  }
+};
+
+// ====== Get Video Detail ======
+export const getVideoDetail = async (video_id: number): Promise<VideoDetailResponse["data"]> => {
+  const token = await AsyncStorage.getItem('access_token');
+  if (!token) throw new Error('Token not found');
+
+  try {
+    const response = await axios.post<VideoDetailResponse>(
+      `${BASE_URL}/videos`,
+      { video_id },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (response.data.status === "1") {
+      return response.data.data;
+    } else {
+      throw new Error(response.data.message || "Video fetch failed");
+    }
+  } catch (error: any) {
+    console.error("Error fetching video details:", error.message);
+    throw error;
   }
 };
 

@@ -6,6 +6,7 @@ import {
   VideoCategory,
 } from "@/services/api";
 import * as FileSystem from "expo-file-system";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -302,8 +303,17 @@ const MyVideos: React.FC = () => {
               data={videos}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
-                <View style={styles.videoCardView}>
-                  {/* THUMBNAIL FIRST */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/screens/VideoDetails",
+                      params: { video_id: item.id },
+                    })
+                  }
+                  style={styles.videoCardView} // keep your shadow/border styles here
+                >
+                  {/* THUMBNAIL */}
                   <View
                     style={{
                       width: "100%",
@@ -334,8 +344,8 @@ const MyVideos: React.FC = () => {
                   {/* DESCRIPTION */}
                   <View style={{ paddingHorizontal: 10 }}>
                     {item.description
-                      .replace(/<[^>]+>/g, "") // Remove HTML tags
-                      .split(/[\n•-]/) // Split on newline or bullet-like characters
+                      .replace(/<[^>]+>/g, "")
+                      .split(/[\n•-]/)
                       .map((point, index) => {
                         const trimmed = point.trim();
                         if (!trimmed) return null;
@@ -360,6 +370,8 @@ const MyVideos: React.FC = () => {
                         );
                       })}
                   </View>
+
+                  {/* ASSIGNED DATE */}
                   <View style={styles.assignedDateView}>
                     <Text style={styles.assignedDateText}>
                       Assigned: {formatSmartDate(item.assign_date)}
@@ -375,7 +387,7 @@ const MyVideos: React.FC = () => {
                       </Text>
                     )}
                   </View>
-                </View>
+                </TouchableOpacity>
               )}
             />
           )}
@@ -546,11 +558,6 @@ const styles = StyleSheet.create({
     padding: responsive.padding(10),
     borderRadius: responsive.borderRadius(10),
     backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   assignedDateView: {
     flexDirection: "row",
