@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  ImageBackground,
+  Image,
   StatusBar,
   StyleSheet,
   Text,
@@ -73,10 +73,10 @@ const Dashboard = () => {
               activeOpacity={0.7}
               onPress={() => router.push("/(app)/(tabs)/myvideos")}
             >
-              <ImageBackground
+              <Image
                 source={imageUrl ? { uri: imageUrl } : undefined}
                 style={styles.imageButton}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             </TouchableOpacity>
           </View>
@@ -108,7 +108,6 @@ const styles = StyleSheet.create({
     width: responsive.width(350),
     height: responsive.height(400),
     marginTop: responsive.margin(80),
-    borderRadius: responsive.borderRadius(12),
     overflow: "hidden",
   },
 });
