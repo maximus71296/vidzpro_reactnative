@@ -107,7 +107,8 @@ const styles = StyleSheet.create({
   imageButton: {
     width: responsive.width(350),
     height: responsive.height(400),
-    marginTop: responsive.margin(80),
+    marginTop: responsive.margin(20),
+    borderRadius: responsive.borderRadius(20),
     overflow: "hidden",
   },
 });
