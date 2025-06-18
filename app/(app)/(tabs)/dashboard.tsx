@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSansSemiBold",
   },
   imageButton: {
-    width: responsive.width(340),
+    width: responsive.width(350),
     height: responsive.height(400),
     marginTop: responsive.margin(80),
     borderRadius: responsive.borderRadius(12),
