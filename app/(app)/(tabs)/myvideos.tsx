@@ -10,8 +10,10 @@ import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   Image,
+  Modal,
   StatusBar,
   StyleSheet,
   Text,
@@ -20,6 +22,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context"; // ✅ More reliable
 import Toast from "react-native-toast-message";
+import WebView from "react-native-webview";
+
+const { width, height } = Dimensions.get("window");
 
 // Define type for videos
 type VideoItem = {
@@ -50,6 +55,9 @@ const MyVideos: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [videoModalVisible, setVideoModalVisible] = useState(false);
+  const vimeoUrl = 'https://player.vimeo.com/video/1071440600';
+
 
   const primaryColor = "#F9BC11";
   const secondaryColor = "#033337";
@@ -246,9 +254,11 @@ const MyVideos: React.FC = () => {
           <TouchableOpacity
             style={styles.viewTutorialsButtonView}
             activeOpacity={0.7}
+            onPress={() => setVideoModalVisible(true)}
           >
             <Text style={styles.viewTutorialsButtonText}>View Tutorials</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.certificateDownloadButtonView}
             activeOpacity={0.7}
@@ -269,7 +279,9 @@ const MyVideos: React.FC = () => {
                 key={cat.id}
                 style={[
                   styles.buttonBase,
-                  { backgroundColor: isActive ? primaryColor : secondaryColor },
+                  {
+                    backgroundColor: isActive ? primaryColor : secondaryColor,
+                  },
                 ]}
                 onPress={() => setSelectedCategory(cat)}
                 activeOpacity={0.7}
@@ -287,9 +299,6 @@ const MyVideos: React.FC = () => {
             );
           })}
         </View>
-
-        {/* Show API Message and Category Details */}
-        <View style={{ padding: 10 }}></View>
 
         {/* Video List */}
         <View style={{ paddingHorizontal: 20, flex: 1 }}>
@@ -311,9 +320,8 @@ const MyVideos: React.FC = () => {
                       params: { video_id: item.id },
                     })
                   }
-                  style={styles.videoCardView} // keep your shadow/border styles here
+                  style={styles.videoCardView}
                 >
-                  {/* THUMBNAIL */}
                   <View
                     style={{
                       width: "100%",
@@ -330,7 +338,6 @@ const MyVideos: React.FC = () => {
                     />
                   </View>
 
-                  {/* TITLE */}
                   <Text
                     style={{
                       fontSize: responsive.fontSize(16),
@@ -341,7 +348,6 @@ const MyVideos: React.FC = () => {
                     {item.video_title}
                   </Text>
 
-                  {/* DESCRIPTION */}
                   <View style={{ paddingHorizontal: 10 }}>
                     {item.description
                       .replace(/<[^>]+>/g, "")
@@ -371,12 +377,10 @@ const MyVideos: React.FC = () => {
                       })}
                   </View>
 
-                  {/* ASSIGNED DATE */}
                   <View style={styles.assignedDateView}>
                     <Text style={styles.assignedDateText}>
                       Assigned: {formatSmartDate(item.assign_date)}
                     </Text>
-
                     {item.is_completed === 0 ? (
                       <Text style={styles.assignedDateText}>
                         Not completed ❌
@@ -424,6 +428,26 @@ const MyVideos: React.FC = () => {
             </View>
           </View>
         )}
+
+        {/* Video Modal */}
+        <Modal visible={videoModalVisible} transparent animationType="fade">
+          <View style={styles.videoModalOverlay}>
+            <View style={styles.videoModalContent}>
+              <WebView
+                source={{ uri: vimeoUrl }}
+                style={{ flex: 1 }}
+                javaScriptEnabled
+                allowsFullscreenVideo
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => setVideoModalVisible(false)}
+              style={styles.closeModalButton}
+            >
+              <Text style={styles.closeModalText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </SafeAreaView>
     </>
   );
@@ -569,6 +593,31 @@ const styles = StyleSheet.create({
   assignedDateText: {
     fontWeight: "500",
     fontSize: responsive.fontSize(12),
+  },
+  videoModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  videoModalContent: {
+    width: width * 0.9,
+    height: height * 0.5,
+    backgroundColor: "#000",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  closeModalButton: {
+    position: "absolute",
+    top: 40,
+    right: 30,
+    padding: 10,
+    backgroundColor: "#000",
+    borderRadius: 30,
+  },
+  closeModalText: {
+    color: "#fff",
+    fontSize: 20,
   },
 });
 

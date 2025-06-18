@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     backgroundColor: "#fff",
+    color: 'black',
     borderRadius: responsive.borderRadius(20),
     height: responsive.height(50),
     paddingHorizontal: responsive.padding(15),
