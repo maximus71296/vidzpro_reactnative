@@ -85,6 +85,17 @@ export interface VideoDetailResponse {
   };
 }
 
+export interface VideoWatchedStatusResponse {
+  status: "1" | "0";
+  message: string;
+  data?: {
+    video_id: number;
+    video_title: string;
+    is_completed: number;
+    completed_At: string;
+  };
+}
+
 // ====== Login Function ======
 export const loginUser = async (
   email: string,
@@ -317,6 +328,34 @@ export const getVideoDetail = async (video_id: number): Promise<VideoDetailRespo
     throw error;
   }
 };
+
+// Video Completion API
+export const getVideoWatchedStatus = async (video_id: number): Promise<VideoWatchedStatusResponse> => {
+  const token = await AsyncStorage.getItem('access_token');
+  if (!token) throw new Error('Token not found');
+
+  try {
+    const response = await axios.post<VideoWatchedStatusResponse>(
+      `${BASE_URL}/videos-watched-status`,
+      { video_id },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching video watched status:", error?.response?.data || error.message);
+    return {
+      status: "0",
+      message: "Something went wrong. Please try again.",
+    };
+  }
+};
+
 
 
 

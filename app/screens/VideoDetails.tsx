@@ -1,5 +1,5 @@
 import responsive from "@/responsive";
-import { getVideoDetail } from "@/services/api";
+import { getVideoDetail, getVideoWatchedStatus } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -9,7 +9,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -115,6 +115,37 @@ const VideoDetails = () => {
     );
   }
 
+  const getVimeoHTML = (vimeoId: string) => `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script src="https://player.vimeo.com/api/player.js"></script>
+    </head>
+    <body style="margin:0;padding:0;overflow:hidden;">
+      <div style="width:100vw;height:100vh;">
+        <iframe id="vimeoPlayer"
+          src="https://player.vimeo.com/video/${vimeoId}?autoplay=1&controls=0&playsinline=1"
+          width="100%" height="100%" frameborder="0"
+          allow="autoplay; fullscreen" allowfullscreen>
+        </iframe>
+      </div>
+      <script>
+        const iframe = document.getElementById('vimeoPlayer');
+        const player = new Vimeo.Player(iframe);
+
+        player.on('ended', function() {
+          window.ReactNativeWebView.postMessage("videoEnded");
+        });
+      </script>
+    </body>
+  </html>
+`;
+
+
+  const vimeoMatch = videoData.url.match(/vimeo\.com\/(\d+)/);
+  const vimeoId = vimeoMatch ? vimeoMatch[1] : "";
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -132,15 +163,26 @@ const VideoDetails = () => {
         {/* Video Player */}
         <View style={styles.videoContainer}>
           <WebView
-            source={{
-              uri:
-                transformVimeoUrl(videoData.url) +
-                "?autoplay=0&title=0&byline=0&portrait=0&controls=0&fullscreen=1&speed=0&pip=0",
-            }}
-            style={styles.webview}
+            originWhitelist={["*"]}
+            source={{ html: getVimeoHTML(vimeoId) }}
             javaScriptEnabled={true}
             domStorageEnabled={true}
             allowsFullscreenVideo={true}
+            onMessage={async (event) => {
+              if (event.nativeEvent.data === "videoEnded") {
+                try {
+                  const status = await getVideoWatchedStatus(Number(video_id));
+                  if (status.status === "1" && status.data?.is_completed) {
+                    alert(`✅ ${status.message}`);
+                  } else {
+                    alert("⚠️ Video not marked as completed.");
+                  }
+                } catch (error) {
+                  alert("❌ Error checking video completion.");
+                }
+              }
+            }}
+            style={styles.webview}
           />
         </View>
 
