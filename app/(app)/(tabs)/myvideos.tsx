@@ -14,7 +14,6 @@ import {
   FlatList,
   Image,
   Modal,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -56,8 +55,7 @@ const MyVideos: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [videoModalVisible, setVideoModalVisible] = useState(false);
-  const vimeoUrl = 'https://player.vimeo.com/video/1071440600';
-
+  const vimeoUrl = "https://player.vimeo.com/video/1071440600";
 
   const primaryColor = "#F9BC11";
   const secondaryColor = "#033337";
@@ -129,7 +127,6 @@ const MyVideos: React.FC = () => {
 
       const res = await generateCertificate(type);
       console.log("📩 generateCertificate response:", res);
-
       if (res.status === 0) {
         Toast.show({
           type: "info",
@@ -240,194 +237,203 @@ const MyVideos: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#033337" />
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headingText}>My Videos</Text>
-          <View style={styles.dateView}>
-            <Text style={styles.dateText}>Today: {formatSmartDate()}</Text>
-          </View>
-        </View>
-
-        {/* View Tutorials & Certificate */}
-        <View style={styles.buttonView}>
-          <TouchableOpacity
-            style={styles.viewTutorialsButtonView}
-            activeOpacity={0.7}
-            onPress={() => setVideoModalVisible(true)}
-          >
-            <Text style={styles.viewTutorialsButtonText}>View Tutorials</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.certificateDownloadButtonView}
-            activeOpacity={0.7}
-            onPress={() => setShowDropdown((prev) => !prev)}
-          >
-            <Text style={styles.certificateDownloadButtonText}>
-              Download Certificate
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Category Tabs */}
-        <View style={styles.buttonView}>
-          {categories.map((cat) => {
-            const isActive = selectedCategory?.id === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.buttonBase,
-                  {
-                    backgroundColor: isActive ? primaryColor : secondaryColor,
-                  },
-                ]}
-                onPress={() => setSelectedCategory(cat)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{
-                    color: isActive ? secondaryColor : primaryColor,
-                    fontSize: 14,
-                    fontWeight: "500",
-                  }}
-                >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Video List */}
-        <View style={{ paddingHorizontal: 20, flex: 1 }}>
-          {loading ? (
-            <ActivityIndicator size="large" color={primaryColor} />
-          ) : error ? (
-            <Text style={{ color: "red", fontSize: 16 }}>{error}</Text>
-          ) : (
-            <FlatList
-              showsVerticalScrollIndicator={false}
-              data={videos}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/screens/VideoDetails",
-                      params: { video_id: item.id },
-                    })
-                  }
-                  style={styles.videoCardView}
-                >
-                  <View
-                    style={{
-                      width: "100%",
-                      height: responsive.height(200),
-                      borderRadius: responsive.borderRadius(10),
-                      overflow: "hidden",
-                      marginBottom: responsive.margin(10),
-                    }}
-                  >
-                    <Image
-                      source={{ uri: item.video_thumbnail }}
-                      style={styles.videoThumbnail}
-                      resizeMode="cover"
-                    />
-                  </View>
-
-                  <Text
-                    style={{
-                      fontSize: responsive.fontSize(16),
-                      fontWeight: "bold",
-                      marginBottom: responsive.margin(5),
-                    }}
-                  >
-                    {item.video_title}
-                  </Text>
-
-                  <View style={{ paddingHorizontal: 10 }}>
-                    {item.description
-                      .replace(/<[^>]+>/g, "")
-                      .split(/[\n•-]/)
-                      .map((point, index) => {
-                        const trimmed = point.trim();
-                        if (!trimmed) return null;
-                        return (
-                          <View
-                            key={index}
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "flex-start",
-                              marginBottom: 4,
-                            }}
-                          >
-                            <Text style={{ fontSize: 14, lineHeight: 20 }}>
-                              •{" "}
-                            </Text>
-                            <Text
-                              style={{ flex: 1, fontSize: 14, lineHeight: 20 }}
-                            >
-                              {trimmed}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                  </View>
-
-                  <View style={styles.assignedDateView}>
-                    <Text style={styles.assignedDateText}>
-                      Assigned: {formatSmartDate(item.assign_date)}
-                    </Text>
-                    {item.is_completed === 0 ? (
-                      <Text style={styles.assignedDateText}>
-                        Not completed ❌
-                      </Text>
-                    ) : (
-                      <Text style={styles.assignedDateText}>
-                        Completed: {formatSmartDate(item.completed_date)} ✅
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
-          )}
-        </View>
-
-        {/* Certificate Download Dropdown */}
-        {showDropdown && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Download Certificate</Text>
-
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => downloadCertificate("Toolbox")}
-                disabled={downloading}
-              >
-                <Text style={styles.modalOptionText}>Tool Box</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => downloadCertificate("isovideos")}
-                disabled={downloading}
-              >
-                <Text style={styles.modalOptionText}>ISO 9001</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setShowDropdown(false)}
-                style={styles.modalCancel}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
+        <View
+          style={{
+            backgroundColor: "#fff",
+            height: Dimensions.get("window").height - 150,
+          }}
+        >
+          <View style={styles.header}>
+            <Text style={styles.headingText}>My Videos</Text>
+            <View style={styles.dateView}>
+              <Text style={styles.dateText}>Today: {formatSmartDate()}</Text>
             </View>
           </View>
-        )}
+          {/* View Tutorials & Certificate */}
+          <View style={styles.buttonView}>
+            <TouchableOpacity
+              style={styles.viewTutorialsButtonView}
+              activeOpacity={0.7}
+              onPress={() => setVideoModalVisible(true)}
+            >
+              <Text style={styles.viewTutorialsButtonText}>View Tutorials</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.certificateDownloadButtonView}
+              activeOpacity={0.7}
+              onPress={() => setShowDropdown((prev) => !prev)}
+            >
+              <Text style={styles.certificateDownloadButtonText}>
+                Download Certificate
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Category Tabs */}
+          <View style={styles.buttonView}>
+            {categories.map((cat) => {
+              const isActive = selectedCategory?.id === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.buttonBase,
+                    {
+                      backgroundColor: isActive ? primaryColor : secondaryColor,
+                    },
+                  ]}
+                  onPress={() => setSelectedCategory(cat)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={{
+                      color: isActive ? secondaryColor : primaryColor,
+                      fontSize: 14,
+                      fontWeight: "500",
+                    }}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Video List */}
+          <View style={{ paddingHorizontal: 20, flex: 1, marginTop: 10 }}>
+            {loading ? (
+              <ActivityIndicator size="large" color={primaryColor} />
+            ) : error ? (
+              <Text style={{ color: "red", fontSize: 16 }}>{error}</Text>
+            ) : (
+              <FlatList
+                showsVerticalScrollIndicator={false}
+                data={videos}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/screens/VideoDetails",
+                        params: { video_id: item.id },
+                      })
+                    }
+                    style={styles.videoCardView}
+                  >
+                    <View
+                      style={{
+                        width: "100%",
+                        height: responsive.height(200),
+                        borderRadius: responsive.borderRadius(10),
+                        overflow: "hidden",
+                        marginBottom: responsive.margin(10),
+                      }}
+                    >
+                      <Image
+                        source={{ uri: item.video_thumbnail }}
+                        style={styles.videoThumbnail}
+                        resizeMode="cover"
+                      />
+                    </View>
+
+                    <Text
+                      style={{
+                        fontSize: responsive.fontSize(16),
+                        fontWeight: "bold",
+                        marginBottom: responsive.margin(5),
+                      }}
+                    >
+                      {item.video_title}
+                    </Text>
+
+                    <View style={{ paddingHorizontal: 10 }}>
+                      {item.description
+                        .replace(/<[^>]+>/g, "")
+                        .split(/[\n•-]/)
+                        .map((point, index) => {
+                          const trimmed = point.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <View
+                              key={index}
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "flex-start",
+                                marginBottom: 4,
+                              }}
+                            >
+                              <Text style={{ fontSize: 14, lineHeight: 20 }}>
+                                •{" "}
+                              </Text>
+                              <Text
+                                style={{
+                                  flex: 1,
+                                  fontSize: 14,
+                                  lineHeight: 20,
+                                }}
+                              >
+                                {trimmed}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                    </View>
+
+                    <View style={styles.assignedDateView}>
+                      <Text style={styles.assignedDateText}>
+                        Assigned: {formatSmartDate(item.assign_date)}
+                      </Text>
+                      {item.is_completed === 0 ? (
+                        <Text style={styles.assignedDateText}>
+                          Not completed ❌
+                        </Text>
+                      ) : (
+                        <Text style={styles.assignedDateText}>
+                          Completed: {formatSmartDate(item.completed_date)} ✅
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+
+          {/* Certificate Download Dropdown */}
+          {showDropdown && (
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Download Certificate</Text>
+
+                <TouchableOpacity
+                  style={styles.modalOption}
+                  onPress={() => downloadCertificate("Toolbox")}
+                  disabled={downloading}
+                >
+                  <Text style={styles.modalOptionText}>Tool Box</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modalOption}
+                  onPress={() => downloadCertificate("isovideos")}
+                  disabled={downloading}
+                >
+                  <Text style={styles.modalOptionText}>ISO 9001</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowDropdown(false)}
+                  style={styles.modalCancel}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Video Modal */}
         <Modal visible={videoModalVisible} transparent animationType="fade">
@@ -456,7 +462,7 @@ const MyVideos: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#eeeeee",
+    backgroundColor: "#033337",
   },
   header: {
     alignItems: "center",
@@ -581,7 +587,8 @@ const styles = StyleSheet.create({
     marginBottom: responsive.margin(20),
     padding: responsive.padding(10),
     borderRadius: responsive.borderRadius(10),
-    backgroundColor: "#fff",
+    backgroundColor: "#f1f1f1",
+    shadowColor: "#000",
   },
   assignedDateView: {
     flexDirection: "row",
@@ -602,10 +609,11 @@ const styles = StyleSheet.create({
   },
   videoModalContent: {
     width: width * 0.9,
-    height: height * 0.5,
-    backgroundColor: "#000",
+    height: width * 0.55,
+    backgroundColor: "white",
     borderRadius: 10,
     overflow: "hidden",
+    padding: 10,
   },
   closeModalButton: {
     position: "absolute",

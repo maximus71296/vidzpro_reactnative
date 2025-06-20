@@ -11,12 +11,12 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: '#F9BC11',
-        tabBarInactiveTintColor: '#fff',
+        tabBarActiveTintColor: "#F9BC11",
+        tabBarInactiveTintColor: "#fff",
         tabBarStyle: {
-          backgroundColor: '#033337',
+          backgroundColor: "#033337",
           borderTopWidth: 0.5,
-          borderTopColor: '#ccc',
+          borderTopColor: "#ccc",
           height: 60 + insets.bottom,
         },
         tabBarLabelStyle: {
@@ -27,26 +27,26 @@ export default function TabsLayout() {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           switch (route.name) {
-            case 'dashboard':
-              iconName = focused ? 'home' : 'home-outline';
+            case "dashboard":
+              iconName = focused ? "home" : "home-outline";
               break;
-            case 'myvideos':
-              iconName = focused ? 'videocam' : 'videocam-outline';
+            case "myvideos":
+              iconName = focused ? "videocam" : "videocam-outline";
               break;
-            case 'profile':
-              iconName = focused ? 'person' : 'person-outline';
+            case "profile":
+              iconName = focused ? "person" : "person-outline";
               break;
             default:
-              iconName = 'alert-circle';
+              iconName = "alert-circle";
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
-      <Tabs.Screen name="myvideos" options={{ title: 'My Videos' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="dashboard" options={{ title: "Dashboard" }} />
+      <Tabs.Screen name="myvideos" options={{ title: "My Videos" }} />
+      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
     </Tabs>
   );
 }

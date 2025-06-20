@@ -7,13 +7,13 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -143,66 +143,70 @@ const Profile = () => {
   return (
     <>
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#033337" />
+        <View style={{ backgroundColor: "#fff", height: Dimensions.get("window").height - 150 }}>
+          <View style={styles.header}>
+            <Text style={styles.headingText}>Profile</Text>
+          </View>
+          {/* Profile Image + Edit Button */}
+          <View style={styles.mainContentView}>
+            <View style={styles.profileImageContainer}>
+              <Image source={userImage} style={styles.profileImage} />
+              <TouchableOpacity
+                style={styles.cameraButton}
+                activeOpacity={0.7}
+                onPress={() => console.log("Change Image")}
+              >
+                <FontAwesome name="camera" size={20} color="#333" />
+              </TouchableOpacity>
+            </View>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headingText}>Profile</Text>
-        </View>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
 
-        {/* Profile Image + Edit Button */}
-        <View style={styles.mainContentView}>
-          <View style={styles.profileImageContainer}>
-            <Image source={userImage} style={styles.profileImage} />
-            <TouchableOpacity
-              style={styles.cameraButton}
-              activeOpacity={0.7}
-              onPress={() => console.log("Change Image")}
+            {/* Information List */}
+            <View style={styles.formContainer}>
+              <FlatList
+                data={infoFields}
+                keyExtractor={(item) => item.label}
+                renderItem={({ item, index }) => (
+                  <View
+                    style={[
+                      styles.formRow,
+                      index === infoFields.length - 1 && {
+                        borderBottomWidth: 0,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.label}>{item.label}</Text>
+                    <Text style={styles.value}>{item.value}</Text>
+                  </View>
+                )}
+              />
+            </View>
+          </View>
+
+          {/* Logout Button */}
+          {logoutLoading ? (
+            <View
+              style={[
+                styles.logoutButton,
+                { flexDirection: "row", justifyContent: "center" },
+              ]}
             >
-              <FontAwesome name="camera" size={20} color="#333" />
+              <ActivityIndicator color="#fff" />
+              <Text style={[styles.logoutText, { marginLeft: 10 }]}>
+                Logging out...
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
+              <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
-          </View>
-
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-
-          {/* Information List */}
-          <View style={styles.formContainer}>
-            <FlatList
-              data={infoFields}
-              keyExtractor={(item) => item.label}
-              renderItem={({ item, index }) => (
-                <View
-                  style={[
-                    styles.formRow,
-                    index === infoFields.length - 1 && { borderBottomWidth: 0 },
-                  ]}
-                >
-                  <Text style={styles.label}>{item.label}</Text>
-                  <Text style={styles.value}>{item.value}</Text>
-                </View>
-              )}
-            />
-          </View>
+          )}
         </View>
-
-        {/* Logout Button */}
-        {logoutLoading ? (
-          <View
-            style={[
-              styles.logoutButton,
-              { flexDirection: "row", justifyContent: "center" },
-            ]}
-          >
-            <ActivityIndicator color="#fff" />
-            <Text style={[styles.logoutText, { marginLeft: 10 }]}>
-              Logging out...
-            </Text>
-          </View>
-        ) : (
-          <TouchableOpacity activeOpacity={0.7} style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        )}
       </SafeAreaView>
     </>
   );
@@ -211,7 +215,7 @@ const Profile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#033337",
   },
   centered: {
     flex: 1,
@@ -300,7 +304,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: responsive.margin(10)
+    marginBottom: responsive.margin(10),
   },
   logoutText: {
     color: "#fff",

@@ -4,13 +4,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -105,7 +104,7 @@ const VideoDetails = () => {
 
     if (!videoId) return url;
 
-    return `https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0&controls=1`;
+    return `https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0&autoplay=1&controls=0`;
   };
 
   if (!videoData) {
@@ -118,7 +117,6 @@ const VideoDetails = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#033337" />
       <View style={styles.header}>
         <View style={styles.headingBackButtonView}>
           <TouchableOpacity activeOpacity={0.5} onPress={() => router.back()}>
@@ -137,7 +135,7 @@ const VideoDetails = () => {
             source={{
               uri:
                 transformVimeoUrl(videoData.url) +
-                "?autoplay=0&title=0&byline=0&portrait=0&controls=1&fullscreen=1&speed=0&pip=0",
+                "?autoplay=0&title=0&byline=0&portrait=0&controls=0&fullscreen=1&speed=0&pip=0",
             }}
             style={styles.webview}
             javaScriptEnabled={true}
@@ -183,7 +181,7 @@ const VideoDetails = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#eeeeee",
+    backgroundColor: "#033337",
   },
   header: {
     alignItems: "center",

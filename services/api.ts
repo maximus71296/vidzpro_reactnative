@@ -246,7 +246,7 @@ export const generateCertificate = async (type: "toolbox" | "isovideos") => {
 
     const response = await axios.post(
       `${BASE_URL}/generate-certificate`,
-      { type },
+      { category: type },
       {
         headers: {
           Authorization: `Bearer ${token}`,
