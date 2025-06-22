@@ -125,23 +125,34 @@ const VideoDetails = () => {
     <body style="margin:0;padding:0;overflow:hidden;">
       <div style="width:100vw;height:100vh;">
         <iframe id="vimeoPlayer"
-          src="https://player.vimeo.com/video/${vimeoId}?autoplay=1&controls=0&playsinline=1"
+          src="https://player.vimeo.com/video/${vimeoId}?autoplay=0&controls=1&playsinline=1"
           width="100%" height="100%" frameborder="0"
           allow="autoplay; fullscreen" allowfullscreen>
         </iframe>
       </div>
       <script>
         const iframe = document.getElementById('vimeoPlayer');
+        var timeWatched = 0;
         const player = new Vimeo.Player(iframe);
+        player.on('timeupdate', function(data) {
+            if (data.seconds - 1 < timeWatched && data.seconds > timeWatched) {
+              timeWatched = data.seconds;
+            }
+        });
 
         player.on('ended', function() {
           window.ReactNativeWebView.postMessage("videoEnded");
+        });
+
+        player.on('seeked', function(data) {
+        if (timeWatched < data.seconds) {
+          player.setCurrentTime(timeWatched);
+        }
         });
       </script>
     </body>
   </html>
 `;
-
 
   const vimeoMatch = videoData.url.match(/vimeo\.com\/(\d+)/);
   const vimeoId = vimeoMatch ? vimeoMatch[1] : "";
