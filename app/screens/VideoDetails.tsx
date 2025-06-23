@@ -2,9 +2,10 @@ import responsive from "@/responsive";
 import { getVideoDetail, getVideoWatchedStatus } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,14 +13,20 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { WebView as WebViewType } from "react-native-webview";
 import { WebView } from "react-native-webview";
 
-const VideoDetails = () => {
-  const { video_id } = useLocalSearchParams();
-  const [videoData, setVideoData] = useState<null | Awaited<
-    ReturnType<typeof getVideoDetail>
-  >>(null);
+const VideoDetails: React.FC = () => {
+  const { video_id } = useLocalSearchParams<{ video_id: string }>();
+  const webViewRef = useRef<WebViewType>(null);
+
+  const [videoData, setVideoData] = useState<
+    Awaited<ReturnType<typeof getVideoDetail>> | null
+  >(null);
   const [loading, setLoading] = useState(true);
+  const [isVideoEnded, setIsVideoEnded] = useState(false);
+  const [hasAcknowledged, setHasAcknowledged] = useState(false);
+  const [webViewKey, setWebViewKey] = useState(0);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -38,13 +45,10 @@ const VideoDetails = () => {
     }
   }, [video_id]);
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#000" />
-      </View>
-    );
-  }
+  const restartVideo = () => {
+    setWebViewKey(prev => prev + 1); // Reloads the WebView with new key
+    setIsVideoEnded(false); // Reset end state
+  };
 
   const formatSmartDate = (
     dateInput?: string | number | Date | null
@@ -53,31 +57,22 @@ const VideoDetails = () => {
     let options: Intl.DateTimeFormatOptions;
 
     try {
-      // Case 1: A date was provided (from your API).
       if (dateInput) {
-        // Create a Date object from the input.
-        // The .replace is a safety measure for strings like "2025-05-15 13:37:40"
         const safeInput =
           typeof dateInput === "string"
             ? dateInput.replace(" ", "T")
             : dateInput;
         dateToFormat = new Date(safeInput);
-
-        // Use the options that include time.
         options = {
           year: "numeric",
-          month: "short", // "May" -> "May", "December" -> "Dec"
+          month: "short",
           day: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
-          hour12: false, // Use 24-hour format as in your original function
+          hour12: false,
         };
-      }
-      // Case 2: No date was provided, so use today's date.
-      else {
+      } else {
         dateToFormat = new Date();
-
-        // Use the date-only options.
         options = {
           year: "numeric",
           month: "long",
@@ -85,27 +80,62 @@ const VideoDetails = () => {
         };
       }
 
-      // Final check to ensure the date is valid before formatting.
-      if (isNaN(dateToFormat.getTime())) {
-        throw new Error("Invalid date created.");
-      }
+      if (isNaN(dateToFormat.getTime())) throw new Error("Invalid date");
     } catch (error) {
       console.error("Date formatting failed for input:", dateInput, error);
-      return "Invalid Date"; // Fallback for any errors
+      return "Invalid Date";
     }
 
-    // Use toLocaleString, which works for both date-only and date-with-time.
     return dateToFormat.toLocaleString("en-US", options);
   };
 
-  const transformVimeoUrl = (url: string): string => {
-    const match = url.match(/vimeo\.com\/(\d+)/);
-    const videoId = match ? match[1] : null;
+  const getVimeoHTML = (vimeoId: string) => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://player.vimeo.com/api/player.js"></script>
+      </head>
+      <body style="margin:0;padding:0;overflow:hidden;">
+        <div style="width:100vw;height:100vh;">
+          <iframe id="vimeoPlayer"
+            src="https://player.vimeo.com/video/${vimeoId}?autoplay=1&controls=1&playsinline=1"
+            width="100%" height="100%" frameborder="0"
+            allow="autoplay; fullscreen" allowfullscreen>
+          </iframe>
+        </div>
+        <script>
+          const iframe = document.getElementById('vimeoPlayer');
+          window.vimeoPlayer = new Vimeo.Player(iframe);
+          let timeWatched = 0;
 
-    if (!videoId) return url;
+          window.vimeoPlayer.on('timeupdate', function(data) {
+            if (data.seconds - 1 < timeWatched && data.seconds > timeWatched) {
+              timeWatched = data.seconds;
+            }
+          });
 
-    return `https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0&autoplay=1&controls=0`;
-  };
+          window.vimeoPlayer.on('ended', function() {
+            window.ReactNativeWebView.postMessage("videoEnded");
+          });
+
+          window.vimeoPlayer.on('seeked', function(data) {
+            if (timeWatched < data.seconds) {
+              window.vimeoPlayer.setCurrentTime(timeWatched);
+            }
+          });
+        </script>
+      </body>
+    </html>
+  `;
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
 
   if (!videoData) {
     return (
@@ -114,45 +144,6 @@ const VideoDetails = () => {
       </View>
     );
   }
-
-  const getVimeoHTML = (vimeoId: string) => `
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://player.vimeo.com/api/player.js"></script>
-    </head>
-    <body style="margin:0;padding:0;overflow:hidden;">
-      <div style="width:100vw;height:100vh;">
-        <iframe id="vimeoPlayer"
-          src="https://player.vimeo.com/video/${vimeoId}?autoplay=0&controls=1&playsinline=1"
-          width="100%" height="100%" frameborder="0"
-          allow="autoplay; fullscreen" allowfullscreen>
-        </iframe>
-      </div>
-      <script>
-        const iframe = document.getElementById('vimeoPlayer');
-        var timeWatched = 0;
-        const player = new Vimeo.Player(iframe);
-        player.on('timeupdate', function(data) {
-            if (data.seconds - 1 < timeWatched && data.seconds > timeWatched) {
-              timeWatched = data.seconds;
-            }
-        });
-
-        player.on('ended', function() {
-          window.ReactNativeWebView.postMessage("videoEnded");
-        });
-
-        player.on('seeked', function(data) {
-        if (timeWatched < data.seconds) {
-          player.setCurrentTime(timeWatched);
-        }
-        });
-      </script>
-    </body>
-  </html>
-`;
 
   const vimeoMatch = videoData.url.match(/vimeo\.com\/(\d+)/);
   const vimeoId = vimeoMatch ? vimeoMatch[1] : "";
@@ -170,41 +161,88 @@ const VideoDetails = () => {
           <Text style={styles.dateText}>Today: {formatSmartDate()}</Text>
         </View>
       </View>
+
       <ScrollView>
-        {/* Video Player */}
         <View style={styles.videoContainer}>
           <WebView
+            key={webViewKey}
+            ref={webViewRef}
             originWhitelist={["*"]}
             source={{ html: getVimeoHTML(vimeoId) }}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowsFullscreenVideo={true}
-            onMessage={async (event) => {
+            javaScriptEnabled
+            domStorageEnabled
+            allowsFullscreenVideo
+            onMessage={(event) => {
               if (event.nativeEvent.data === "videoEnded") {
-                try {
-                  const status = await getVideoWatchedStatus(Number(video_id));
-                  if (status.status === "1" && status.data?.is_completed) {
-                    alert(`✅ ${status.message}`);
-                  } else {
-                    alert("⚠️ Video not marked as completed.");
-                  }
-                } catch (error) {
-                  alert("❌ Error checking video completion.");
-                }
+                setIsVideoEnded(true);
               }
             }}
             style={styles.webview}
           />
         </View>
 
-        {/* Video Details */}
+        {isVideoEnded && !hasAcknowledged && (
+          <View style={{ padding: 16, flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity
+              onPress={restartVideo}
+              style={{
+                backgroundColor: "#ccc",
+                padding: 12,
+                borderRadius: 8,
+                flex: 1,
+                alignItems: "center",
+              }}
+            >
+              <Text>Watch Again</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  "Confirm",
+                  "Do you really understand the video?",
+                  [
+                    {
+                      text: "No",
+                      onPress: restartVideo,
+                      style: "cancel",
+                    },
+                    {
+                      text: "Yes",
+                      onPress: async () => {
+                        try {
+                          await getVideoWatchedStatus(Number(video_id));
+                          setHasAcknowledged(true);
+                          alert("✅ Video marked as completed.");
+                        } catch (error) {
+                          alert("❌ Failed to complete video.");
+                        }
+                      },
+                    },
+                  ],
+                  { cancelable: false }
+                );
+              }}
+              style={{
+                backgroundColor: "#4CAF50",
+                padding: 12,
+                borderRadius: 8,
+                flex: 1,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#fff" }}>I Understand</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.videoDetailsView}>
           <Text style={styles.title}>{videoData.title}</Text>
           <Text style={styles.sectionTitle}>Description:</Text>
           {videoData.description
-            .replace(/<[^>]+>/g, "") // remove HTML tags
-            .split(/\n|•|-|\d+\./) // split on newline, bullets, hyphens, or numbered lists
-            .filter((item) => item.trim() !== "") // remove empty lines
+            .replace(/<[^>]+>/g, "")
+            .split(/\n|•|-|\d+\./)
+            .filter((item) => item.trim() !== "")
             .map((item, index) => (
               <Text key={index} style={[styles.text, { paddingLeft: 10 }]}>
                 • {item.trim()}
@@ -217,9 +255,9 @@ const VideoDetails = () => {
             Key Points:
           </Text>
           {videoData.key_points
-            .replace(/<[^>]+>/g, "") // remove HTML tags
-            .split(/\n|•|-|\d+\./) // split into bullet items
-            .filter((item) => item.trim() !== "") // remove empty strings
+            .replace(/<[^>]+>/g, "")
+            .split(/\n|•|-|\d+\./)
+            .filter((item) => item.trim() !== "")
             .map((item, index) => (
               <Text key={index} style={[styles.text, { paddingLeft: 10 }]}>
                 • {item.trim()}

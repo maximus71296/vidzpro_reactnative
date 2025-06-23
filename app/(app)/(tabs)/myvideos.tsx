@@ -382,20 +382,16 @@ const MyVideos: React.FC = () => {
                         })}
                     </View>
 
-                    <View style={styles.assignedDateView}>
-                      <Text style={styles.assignedDateText}>
-                        Assigned: {formatSmartDate(item.assign_date)}
-                      </Text>
-                      {item.is_completed === 0 ? (
-                        <Text style={styles.assignedDateText}>
-                          Not completed ❌
-                        </Text>
-                      ) : (
-                        <Text style={styles.assignedDateText}>
-                          Completed: {formatSmartDate(item.completed_date)} ✅
-                        </Text>
-                      )}
-                    </View>
+                    <View style={styles.assignedDateViewColumn}>
+  <Text style={styles.assignedDateText}>
+    Assigned: {formatSmartDate(item.assign_date)}
+  </Text>
+  <Text style={styles.assignedDateText}>
+    {item.is_completed === 0
+      ? "Not completed ❌"
+      : `Completed: ${formatSmartDate(item.completed_date)} ✅`}
+  </Text>
+</View>
                   </TouchableOpacity>
                 )}
               />
@@ -590,13 +586,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#f1f1f1",
     shadowColor: "#000",
   },
-  assignedDateView: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    marginTop: responsive.margin(10),
-    paddingTop: responsive.padding(5),
-  },
+  assignedDateViewColumn: {
+  flexDirection: "column", // makes it stack vertically
+  gap: 4,
+  borderTopWidth: 1,
+  marginTop: responsive.margin(10),
+  paddingTop: responsive.padding(5),
+},
   assignedDateText: {
     fontWeight: "500",
     fontSize: responsive.fontSize(12),
