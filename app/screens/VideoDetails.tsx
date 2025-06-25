@@ -1,6 +1,7 @@
 import responsive from "@/responsive";
 import { getVideoDetail, getVideoWatchedStatus, VideoWatchedStatusResponse } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -20,57 +21,49 @@ const VideoDetails: React.FC = () => {
   const { video_id } = useLocalSearchParams<{ video_id: string }>();
   const webViewRef = useRef<WebViewType>(null);
 
-  const [videoData, setVideoData] = useState<Awaited<
-    ReturnType<typeof getVideoDetail>
-  > | null>(null);
+  const [videoData, setVideoData] = useState<Awaited<ReturnType<typeof getVideoDetail>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isVideoEnded, setIsVideoEnded] = useState(false);
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
+  const [alreadyAcknowledged, setAlreadyAcknowledged] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
   const [selectedFaqVideo, setSelectedFaqVideo] = useState<string | null>(null);
   const [videoStatus, setVideoStatus] = useState<VideoWatchedStatusResponse["data"] | null>(null);
 
   useEffect(() => {
-  const fetchVideo = async () => {
-    try {
-      const data = await getVideoDetail(Number(video_id));
-      setVideoData(data);
-
-      const status = await getVideoWatchedStatus(Number(video_id));
-      setVideoStatus(status.data || null);
-    } catch (error) {
-      console.error("Error fetching video:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (video_id) {
-    fetchVideo();
-  }
-}, [video_id]);
-
-
-  useEffect(() => {
-    const fetchVideo = async () => {
+    const fetchVideoDetails = async () => {
       try {
         const data = await getVideoDetail(Number(video_id));
         setVideoData(data);
+
+        const localAck = await AsyncStorage.getItem(`video_acknowledged_${video_id}`);
+        if (localAck === "true" || data.is_completed === 1) {
+          setAlreadyAcknowledged(true);
+          setHasAcknowledged(true);
+        }
+
+        const status = await getVideoWatchedStatus(Number(video_id));
+        if (status.status === "1" && status.data) {
+          setVideoStatus(status.data);
+        }
       } catch (error) {
-        console.error("Error fetching video:", error);
+        console.error("Error fetching video details:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (video_id) {
-      fetchVideo();
-    }
+    if (video_id) fetchVideoDetails();
   }, [video_id]);
 
   const restartVideo = () => {
-    setWebViewKey((prev) => prev + 1); // Reloads the WebView with new key
-    setIsVideoEnded(false); // Reset end state
+    setWebViewKey(prev => prev + 1);
+    setIsVideoEnded(false);
+  };
+
+  const getVimeoIdFromUrl = (url: string) => {
+    const match = url.match(/vimeo\.com\/(\d+)/);
+    return match ? match[1] : "";
   };
 
   const getVimeoHTML = (vimeoId: string) => `
@@ -129,17 +122,8 @@ const VideoDetails: React.FC = () => {
     );
   }
 
-  const vimeoMatch = videoData.url.match(/vimeo\.com\/(\d+)/);
-  const vimeoId = vimeoMatch ? vimeoMatch[1] : "";
-
-  const getVimeoIdFromUrl = (url: string) => {
-    const match = url.match(/vimeo\.com\/(\d+)/);
-    return match ? match[1] : "";
-  };
-
-  const faqVimeoId = selectedFaqVideo
-    ? getVimeoIdFromUrl(selectedFaqVideo)
-    : null;
+  const baseVimeoId = getVimeoIdFromUrl(videoData.url);
+  const faqVimeoId = selectedFaqVideo ? getVimeoIdFromUrl(selectedFaqVideo) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -148,11 +132,7 @@ const VideoDetails: React.FC = () => {
           <TouchableOpacity activeOpacity={0.5} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text
-            numberOfLines={2}
-            ellipsizeMode="tail"
-            style={styles.headingText}
-          >
+          <Text numberOfLines={2} ellipsizeMode="tail" style={styles.headingText}>
             {videoData.title}
           </Text>
         </View>
@@ -164,9 +144,7 @@ const VideoDetails: React.FC = () => {
             key={webViewKey}
             ref={webViewRef}
             originWhitelist={["*"]}
-            source={{
-              html: getVimeoHTML(faqVimeoId ?? vimeoId),
-            }}
+            source={{ html: getVimeoHTML(faqVimeoId ?? baseVimeoId) }}
             javaScriptEnabled
             domStorageEnabled
             allowsFullscreenVideo
@@ -179,17 +157,11 @@ const VideoDetails: React.FC = () => {
           />
         </View>
 
-        {isVideoEnded && !hasAcknowledged && videoStatus?.is_completed !== 1 && (
+        {isVideoEnded && !hasAcknowledged && !alreadyAcknowledged && videoStatus?.is_completed !== 1 && (
           <View style={{ padding: 16, flexDirection: "row", gap: 10 }}>
             <TouchableOpacity
               onPress={restartVideo}
-              style={{
-                backgroundColor: "#ccc",
-                padding: 12,
-                borderRadius: 8,
-                flex: 1,
-                alignItems: "center",
-              }}
+              style={styles.buttonGrey}
             >
               <Text>Watch Again</Text>
             </TouchableOpacity>
@@ -200,17 +172,15 @@ const VideoDetails: React.FC = () => {
                   "Confirm",
                   "Do you really understand the video?",
                   [
-                    {
-                      text: "No",
-                      onPress: restartVideo,
-                      style: "cancel",
-                    },
+                    { text: "No", onPress: restartVideo, style: "cancel" },
                     {
                       text: "Yes",
                       onPress: async () => {
                         try {
                           await getVideoWatchedStatus(Number(video_id));
+                          await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
                           setHasAcknowledged(true);
+                          setAlreadyAcknowledged(true);
                           alert("✅ Video marked as completed.");
                         } catch (error) {
                           alert("❌ Failed to complete video.");
@@ -221,13 +191,7 @@ const VideoDetails: React.FC = () => {
                   { cancelable: false }
                 );
               }}
-              style={{
-                backgroundColor: "#4CAF50",
-                padding: 12,
-                borderRadius: 8,
-                flex: 1,
-                alignItems: "center",
-              }}
+              style={styles.buttonGreen}
             >
               <Text style={{ color: "#fff" }}>I Understand</Text>
             </TouchableOpacity>
@@ -237,8 +201,7 @@ const VideoDetails: React.FC = () => {
         <View style={styles.videoDetailsView}>
           <Text style={styles.title}>{videoData.title}</Text>
           <Text style={styles.sectionTitle}>Description:</Text>
-          {videoData.description
-            .replace(/<[^>]+>/g, "")
+          {videoData.description.replace(/<[^>]+>/g, "")
             .split(/\n|•|-|\d+\./)
             .filter((item) => item.trim() !== "")
             .map((item, index) => (
@@ -247,13 +210,10 @@ const VideoDetails: React.FC = () => {
               </Text>
             ))}
 
-          <Text
-            style={[styles.sectionTitle, { marginTop: responsive.margin(10) }]}
-          >
+          <Text style={[styles.sectionTitle, { marginTop: responsive.margin(10) }]}>
             Key Points:
           </Text>
-          {videoData.key_points
-            .replace(/<[^>]+>/g, "")
+          {videoData.key_points.replace(/<[^>]+>/g, "")
             .split(/\n|•|-|\d+\./)
             .filter((item) => item.trim() !== "")
             .map((item, index) => (
@@ -265,41 +225,20 @@ const VideoDetails: React.FC = () => {
 
         {videoData.faqs && videoData.faqs.length > 0 && (
           <View style={{ marginTop: 20 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "bold",
-                paddingHorizontal: 16,
-                marginBottom: 8,
-              }}
-            >
+            <Text style={{ fontSize: 16, fontWeight: "bold", paddingHorizontal: 16, marginBottom: 8 }}>
               FAQs (Tap to Play):
             </Text>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ paddingLeft: responsive.padding(16) }}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 16 }}>
               {videoData.faqs.map((faq, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={{
-                    backgroundColor: "#fff",
-                    padding: responsive.padding(12),
-                    borderRadius: responsive.borderRadius(10),
-                    marginRight: responsive.margin(10),
-                    width: responsive.width(180),
-                  }}
+                  style={styles.faqCard}
                   onPress={() => {
                     setSelectedFaqVideo(faq.answer);
-                    setWebViewKey((prev) => prev + 1); // force reload
+                    setWebViewKey(prev => prev + 1);
                   }}
                 >
-                  <Text
-                    numberOfLines={3}
-                    style={{ fontWeight: "600", fontSize: responsive.fontSize(14) }}
-                  >
+                  <Text numberOfLines={3} style={styles.faqText}>
                     {faq.question}
                   </Text>
                 </TouchableOpacity>
@@ -313,18 +252,19 @@ const VideoDetails: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#D9D9D9",
-  },
+  container: { flex: 1, backgroundColor: "#D9D9D9" },
   header: {
     alignItems: "center",
-    gap: 20,
     backgroundColor: "#033337",
-    paddingVertical: responsive.padding(15),
-    paddingHorizontal: responsive.padding(15),
+    padding: 15,
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  headingBackButtonView: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    flex: 1,
   },
   headingText: {
     color: "#fff",
@@ -336,56 +276,47 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
   },
-
-  dateView: {
-    backgroundColor: "#F9BC11",
-    paddingVertical: responsive.padding(5),
-    paddingHorizontal: responsive.padding(10),
-    borderRadius: responsive.borderRadius(5),
-  },
-  dateText: {
-    fontWeight: "500",
-    fontSize: responsive.fontSize(11),
-  },
-  headingBackButtonView: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: responsive.fontSize(22),
-    fontWeight: "bold",
-    marginBottom: responsive.margin(10),
-  },
-  sectionTitle: {
-    fontSize: responsive.fontSize(16),
-    fontWeight: "600",
-  },
-  text: {
-    fontSize: responsive.fontSize(13),
-    marginTop: responsive.margin(4),
-    color: "#333",
-  },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   videoContainer: {
-    margin: responsive.margin(10),
+    margin: 10,
     height: responsive.height(200),
-    borderRadius: responsive.borderRadius(10),
+    borderRadius: 10,
     overflow: "hidden",
   },
-  webview: {
+  webview: { flex: 1 },
+  buttonGrey: {
+    backgroundColor: "#ccc",
+    padding: 12,
+    borderRadius: 8,
     flex: 1,
+    alignItems: "center",
+  },
+  buttonGreen: {
+    backgroundColor: "#4CAF50",
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: "center",
   },
   videoDetailsView: {
     backgroundColor: "#fff",
-    marginHorizontal: responsive.margin(10),
-    padding: responsive.padding(15),
-    borderRadius: responsive.borderRadius(10),
+    marginHorizontal: 10,
+    padding: 15,
+    borderRadius: 10,
+  },
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: "600" },
+  text: { fontSize: 13, marginTop: 4, color: "#333" },
+  faqCard: {
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 10,
+    marginRight: 10,
+    width: 180,
+  },
+  faqText: {
+    fontWeight: "600",
+    fontSize: 14,
   },
 });
 

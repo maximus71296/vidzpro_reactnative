@@ -78,6 +78,7 @@ export interface VideoDetailResponse {
   status: "1" | "0";
   message: string;
   data: {
+    is_completed: number;
     id: number;
     title: string;
     description: string;
