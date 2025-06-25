@@ -5,7 +5,7 @@ import {
   getVideosByCategory,
   VideoCategory,
 } from "@/services/api";
-import * as FileSystem from "expo-file-system";
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -151,49 +151,9 @@ const MyVideos: React.FC = () => {
       console.log("🚀 Starting downloadCertificate for type:", type);
 
       const res = await generateCertificate(type);
-      console.log("📩 generateCertificate response:", res);
-      if (res.status === 0) {
-        Toast.show({
-          type: "info",
-          text1: "No Certificates",
-          text2: res.message,
-        });
-        setDownloading(false);
-        setShowDropdown(false);
-        return;
-      }
-
-      if (res.status === 1 && res.file_url) {
-        const filename =
-          res.file_url.split("/").pop() ?? `certificate_${type}.pdf`;
-        const docDir = FileSystem.documentDirectory;
-
-        if (!docDir) throw new Error("FileSystem.documentDirectory is null");
-
-        const fileUri = docDir + filename;
-        console.log("⬇️ Downloading file to:", fileUri);
-
-        const downloadResumable = FileSystem.createDownloadResumable(
-          res.file_url,
-          fileUri
-        );
-
-        const downloadResult = await downloadResumable.downloadAsync();
-        console.log("✅ Download result:", downloadResult);
-
-        Toast.show({
-          type: "success",
-          text1: "Download Complete",
-          text2: `Certificate downloaded for ${
-            type === "toolbox" ? "Tool Box" : "ISO 9001"
-          }`,
-        });
-      } else {
-        console.log(
-          "❌ Certificate generation failed or file_url missing:",
-          res
-        );
-        throw new Error("Certificate generation failed or file_url missing.");
+      // Open the certificate URL in the external browser
+      if (res.file_url) {
+        Linking.openURL(res.file_url);
       }
     } catch (err) {
       console.error("❌ Download Error:", err);
