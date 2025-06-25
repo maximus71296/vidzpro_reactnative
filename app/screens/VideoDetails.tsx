@@ -1,5 +1,5 @@
 import responsive from "@/responsive";
-import { getVideoDetail, getVideoWatchedStatus } from "@/services/api";
+import { getVideoDetail, getVideoWatchedStatus, VideoWatchedStatusResponse } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -20,13 +20,36 @@ const VideoDetails: React.FC = () => {
   const { video_id } = useLocalSearchParams<{ video_id: string }>();
   const webViewRef = useRef<WebViewType>(null);
 
-  const [videoData, setVideoData] = useState<
-    Awaited<ReturnType<typeof getVideoDetail>> | null
-  >(null);
+  const [videoData, setVideoData] = useState<Awaited<
+    ReturnType<typeof getVideoDetail>
+  > | null>(null);
   const [loading, setLoading] = useState(true);
   const [isVideoEnded, setIsVideoEnded] = useState(false);
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
+  const [selectedFaqVideo, setSelectedFaqVideo] = useState<string | null>(null);
+  const [videoStatus, setVideoStatus] = useState<VideoWatchedStatusResponse["data"] | null>(null);
+
+  useEffect(() => {
+  const fetchVideo = async () => {
+    try {
+      const data = await getVideoDetail(Number(video_id));
+      setVideoData(data);
+
+      const status = await getVideoWatchedStatus(Number(video_id));
+      setVideoStatus(status.data || null);
+    } catch (error) {
+      console.error("Error fetching video:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (video_id) {
+    fetchVideo();
+  }
+}, [video_id]);
+
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -46,47 +69,8 @@ const VideoDetails: React.FC = () => {
   }, [video_id]);
 
   const restartVideo = () => {
-    setWebViewKey(prev => prev + 1); // Reloads the WebView with new key
+    setWebViewKey((prev) => prev + 1); // Reloads the WebView with new key
     setIsVideoEnded(false); // Reset end state
-  };
-
-  const formatSmartDate = (
-    dateInput?: string | number | Date | null
-  ): string => {
-    let dateToFormat: Date;
-    let options: Intl.DateTimeFormatOptions;
-
-    try {
-      if (dateInput) {
-        const safeInput =
-          typeof dateInput === "string"
-            ? dateInput.replace(" ", "T")
-            : dateInput;
-        dateToFormat = new Date(safeInput);
-        options = {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        };
-      } else {
-        dateToFormat = new Date();
-        options = {
-          year: "numeric",
-          month: "long",
-          day: "2-digit",
-        };
-      }
-
-      if (isNaN(dateToFormat.getTime())) throw new Error("Invalid date");
-    } catch (error) {
-      console.error("Date formatting failed for input:", dateInput, error);
-      return "Invalid Date";
-    }
-
-    return dateToFormat.toLocaleString("en-US", options);
   };
 
   const getVimeoHTML = (vimeoId: string) => `
@@ -148,6 +132,15 @@ const VideoDetails: React.FC = () => {
   const vimeoMatch = videoData.url.match(/vimeo\.com\/(\d+)/);
   const vimeoId = vimeoMatch ? vimeoMatch[1] : "";
 
+  const getVimeoIdFromUrl = (url: string) => {
+    const match = url.match(/vimeo\.com\/(\d+)/);
+    return match ? match[1] : "";
+  };
+
+  const faqVimeoId = selectedFaqVideo
+    ? getVimeoIdFromUrl(selectedFaqVideo)
+    : null;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -155,10 +148,13 @@ const VideoDetails: React.FC = () => {
           <TouchableOpacity activeOpacity={0.5} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headingText}>{videoData.title}</Text>
-        </View>
-        <View style={styles.dateView}>
-          <Text style={styles.dateText}>Today: {formatSmartDate()}</Text>
+          <Text
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            style={styles.headingText}
+          >
+            {videoData.title}
+          </Text>
         </View>
       </View>
 
@@ -168,7 +164,9 @@ const VideoDetails: React.FC = () => {
             key={webViewKey}
             ref={webViewRef}
             originWhitelist={["*"]}
-            source={{ html: getVimeoHTML(vimeoId) }}
+            source={{
+              html: getVimeoHTML(faqVimeoId ?? vimeoId),
+            }}
             javaScriptEnabled
             domStorageEnabled
             allowsFullscreenVideo
@@ -181,7 +179,7 @@ const VideoDetails: React.FC = () => {
           />
         </View>
 
-        {isVideoEnded && !hasAcknowledged && (
+        {isVideoEnded && !hasAcknowledged && videoStatus?.is_completed !== 1 && (
           <View style={{ padding: 16, flexDirection: "row", gap: 10 }}>
             <TouchableOpacity
               onPress={restartVideo}
@@ -264,6 +262,51 @@ const VideoDetails: React.FC = () => {
               </Text>
             ))}
         </View>
+
+        {videoData.faqs && videoData.faqs.length > 0 && (
+          <View style={{ marginTop: 20 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "bold",
+                paddingHorizontal: 16,
+                marginBottom: 8,
+              }}
+            >
+              FAQs (Tap to Play):
+            </Text>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ paddingLeft: responsive.padding(16) }}
+            >
+              {videoData.faqs.map((faq, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={{
+                    backgroundColor: "#fff",
+                    padding: responsive.padding(12),
+                    borderRadius: responsive.borderRadius(10),
+                    marginRight: responsive.margin(10),
+                    width: responsive.width(180),
+                  }}
+                  onPress={() => {
+                    setSelectedFaqVideo(faq.answer);
+                    setWebViewKey((prev) => prev + 1); // force reload
+                  }}
+                >
+                  <Text
+                    numberOfLines={3}
+                    style={{ fontWeight: "600", fontSize: responsive.fontSize(14) }}
+                  >
+                    {faq.question}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -272,7 +315,7 @@ const VideoDetails: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#033337",
+    backgroundColor: "#D9D9D9",
   },
   header: {
     alignItems: "center",
@@ -287,7 +330,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: responsive.fontSize(18),
     fontFamily: "NotoSansSemiBold",
+    flexWrap: "wrap",
+    textAlign: "left",
+    lineHeight: 26,
+    flex: 1,
+    flexShrink: 1,
   },
+
   dateView: {
     backgroundColor: "#F9BC11",
     paddingVertical: responsive.padding(5),
@@ -300,8 +349,9 @@ const styles = StyleSheet.create({
   },
   headingBackButtonView: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
+    flex: 1,
   },
   centered: {
     flex: 1,

@@ -1,27 +1,26 @@
 import responsive from "@/responsive";
-import { getUserDetails } from "@/services/api";
-import { FontAwesome } from "@expo/vector-icons";
+import { getUserDetails, updateUserProfile } from "@/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router"; // ✅ Expo Router navigation
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  FlatList,
-  Image,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-import userImage from "../../../assets/images/user.png";
 
 const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+
   const [userData, setUserData] = useState<null | {
     first_name: string;
     last_name: string;
@@ -29,17 +28,18 @@ const Profile = () => {
     phone: string;
   }>(null);
 
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+  });
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const accessToken = await AsyncStorage.getItem("access_token");
-
         if (!accessToken) {
-          Toast.show({
-            type: "error",
-            text1: "Token Missing",
-            text2: "Please login again.",
-          });
+          Toast.show({ type: "error", text1: "Token Missing", text2: "Please login again." });
           router.replace("/(auth)/Login");
           return;
         }
@@ -47,24 +47,20 @@ const Profile = () => {
         const res = await getUserDetails(accessToken);
         if (res.status === "1" && res.data) {
           setUserData(res.data);
-        } else {
-          Toast.show({
-            type: "error",
-            text1: "Failed to load profile",
-            text2: res.message || "Try again later",
+          setFormData({
+            first_name: res.data.first_name || "",
+            last_name: res.data.last_name || "",
+            phone: res.data.phone || "",
           });
+        } else {
+          Toast.show({ type: "error", text1: "Failed to load profile", text2: res.message || "Try again later" });
         }
       } catch (error) {
-        Toast.show({
-          type: "error",
-          text1: "Error",
-          text2: "Something went wrong",
-        });
+        Toast.show({ type: "error", text1: "Error", text2: "Something went wrong" });
       } finally {
         setLoading(false);
       }
     };
-
     fetchUserData();
   }, []);
 
@@ -75,62 +71,78 @@ const Profile = () => {
 
   const handleLogout = () => {
     if (!userData?.first_name) {
+      Toast.show({ type: "error", text1: "User data missing", text2: "Cannot logout without user name" });
+      return;
+    }
+    Alert.alert(`Dear ${userData.first_name},`, "Do you wish to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          setLogoutLoading(true);
+          setTimeout(async () => {
+            try {
+              await AsyncStorage.removeItem("access_token");
+              Toast.show({ type: "success", text1: "Logged out" });
+              router.replace("/(auth)/Login");
+            } catch (error) {
+              Toast.show({ type: "error", text1: "Logout Failed", text2: "Please try again." });
+            } finally {
+              setLogoutLoading(false);
+            }
+          }, 2000);
+        },
+      },
+    ]);
+  };
+
+  const handleSave = async () => {
+  try {
+    const accessToken = await AsyncStorage.getItem("access_token");
+
+    if (!accessToken) {
       Toast.show({
         type: "error",
-        text1: "User data missing",
-        text2: "Cannot logout without user name",
+        text1: "Authentication Error",
+        text2: "Access token missing. Please login again.",
       });
       return;
     }
 
-    Alert.alert(
-      `Dear ${userData.first_name},`,
-      "Do you wish to logout?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            setLogoutLoading(true);
+    const res = await updateUserProfile(accessToken, formData);
+    console.log("API response:", res);
 
-            setTimeout(async () => {
-              try {
-                await AsyncStorage.removeItem("access_token");
-                Toast.show({
-                  type: "success",
-                  text1: "Logged out",
-                });
-                router.replace("/(auth)/Login"); // ✅ Expo Router
-              } catch (error) {
-                Toast.show({
-                  type: "error",
-                  text1: "Logout Failed",
-                  text2: "Please try again.",
-                });
-              } finally {
-                setLogoutLoading(false);
-              }
-            }, 2000); // Delay of 2 seconds
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
+    if (res.status === "1") {
+      Toast.show({
+        type: "success",
+        text1: "Profile Updated Successfully!",
+      });
 
-  const infoFields = [
-    {
-      label: "First Name",
-      value: `${userData?.first_name?.toLowerCase() || "unknown"}`,
-    },
-    { label: "Last Name", value: `${userData?.last_name || ""}` },
-    { label: "Phone", value: formatPhoneNumber(userData?.phone) },
-    { label: "Email", value: userData?.email || "N/A" },
-  ];
+      setUserData((prev) => ({
+        ...prev!,
+        ...res.data,
+      }));
+
+      setEditMode(false);
+    } else {
+      Toast.show({
+        type: "error",
+        text1: "Update Failed",
+        text2: res.message || "Please try again later.",
+      });
+    }
+  } catch (error: any) {
+    console.error("Update Error:", error);
+    Toast.show({
+      type: "error",
+      text1: "Server Error",
+      text2: error.message || "Something went wrong. Please try again.",
+    });
+  }
+};
+
+
 
   if (loading) {
     return (
@@ -141,74 +153,75 @@ const Profile = () => {
   }
 
   return (
-    <>
-      <SafeAreaView style={styles.container}>
-        <View style={{ backgroundColor: "#fff", height: Dimensions.get("window").height - 150 }}>
-          <View style={styles.header}>
-            <Text style={styles.headingText}>Profile</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={{ backgroundColor: "#fff", height: Dimensions.get("window").height - 150 }}>
+        <View style={styles.header}>
+          <Text style={styles.headingText}>Profile</Text>
+        </View>
+
+        <View style={styles.mainContentView}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <View style={styles.formContainer}>
+            {[{ label: "First Name", key: "first_name" }, { label: "Last Name", key: "last_name" }, { label: "Phone", key: "phone" }, { label: "Email", key: "email", editable: false }].map((item, index, arr) => (
+              <View key={item.key} style={[styles.formRow, index === arr.length - 1 && { borderBottomWidth: 0 }]}> 
+                <Text style={styles.label}>{item.label}</Text>
+                {editMode && item.editable !== false ? (
+                  <TextInput
+                    style={styles.input}
+                    value={formData[item.key as keyof typeof formData]}
+                    onChangeText={(text) => setFormData((prev) => ({ ...prev, [item.key]: text }))}
+                    keyboardType={item.key === "phone" ? "phone-pad" : "default"}
+                  />
+                ) : (
+                  <Text style={styles.value}>
+                    {item.key === "email"
+                      ? userData?.email || "N/A"
+                      : item.key === "phone"
+                      ? formatPhoneNumber(userData?.phone)
+                      : userData?.[item.key as keyof typeof userData] || "N/A"}
+                  </Text>
+                )}
+              </View>
+            ))}
           </View>
-          {/* Profile Image + Edit Button */}
-          <View style={styles.mainContentView}>
-            <View style={styles.profileImageContainer}>
-              <Image source={userImage} style={styles.profileImage} />
-              <TouchableOpacity
-                style={styles.cameraButton}
-                activeOpacity={0.7}
-                onPress={() => console.log("Change Image")}
-              >
-                <FontAwesome name="camera" size={20} color="#333" />
+
+          {editMode ? (
+            <View style={{ flexDirection: "row", gap: 10, marginTop: responsive.margin(20), paddingHorizontal: responsive.padding(20) }}>
+              <TouchableOpacity style={[styles.logoutButton, { backgroundColor: "#28a745", flex: 1 }]} onPress={handleSave}>
+                <Text style={styles.logoutText}>Save Changes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.logoutButton, { backgroundColor: "#6c757d", flex: 1 }]} onPress={() => {
+                setEditMode(false);
+                if (userData) {
+                  setFormData({
+                    first_name: userData.first_name,
+                    last_name: userData.last_name,
+                    phone: userData.phone,
+                  });
+                }
+              }}>
+                <Text style={styles.logoutText}>Cancel</Text>
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.sectionTitle}>Personal Information</Text>
-
-            {/* Information List */}
-            <View style={styles.formContainer}>
-              <FlatList
-                data={infoFields}
-                keyExtractor={(item) => item.label}
-                renderItem={({ item, index }) => (
-                  <View
-                    style={[
-                      styles.formRow,
-                      index === infoFields.length - 1 && {
-                        borderBottomWidth: 0,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.label}>{item.label}</Text>
-                    <Text style={styles.value}>{item.value}</Text>
-                  </View>
-                )}
-              />
-            </View>
-          </View>
-
-          {/* Logout Button */}
-          {logoutLoading ? (
-            <View
-              style={[
-                styles.logoutButton,
-                { flexDirection: "row", justifyContent: "center" },
-              ]}
-            >
-              <ActivityIndicator color="#fff" />
-              <Text style={[styles.logoutText, { marginLeft: 10 }]}>
-                Logging out...
-              </Text>
-            </View>
           ) : (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.logoutButton}
-              onPress={handleLogout}
-            >
-              <Text style={styles.logoutText}>Logout</Text>
+            <TouchableOpacity style={[styles.logoutButton, { backgroundColor: "#ffc107", marginTop: 20 }]} onPress={() => setEditMode(true)}>
+              <Text style={styles.logoutText}>Edit Profile</Text>
             </TouchableOpacity>
           )}
         </View>
-      </SafeAreaView>
-    </>
+
+        {logoutLoading ? (
+          <View style={[styles.logoutButton, { flexDirection: "row", justifyContent: "center" }]}> 
+            <ActivityIndicator color="#fff" />
+            <Text style={[styles.logoutText, { marginLeft: 10 }]}>Logging out...</Text>
+          </View>
+        ) : (
+          <TouchableOpacity activeOpacity={0.7} style={[styles.logoutButton, { marginTop: 10 }]} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -236,38 +249,8 @@ const styles = StyleSheet.create({
   },
   mainContentView: {
     alignItems: "center",
-    marginTop: responsive.margin(30),
+    marginTop: responsive.margin(10),
     flex: 1,
-  },
-  profileImageContainer: {
-    width: responsive.width(150),
-    height: responsive.height(150),
-    borderRadius: responsive.borderRadius(75),
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  profileImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  cameraButton: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    width: responsive.width(40),
-    height: responsive.width(40),
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
   },
   sectionTitle: {
     marginTop: responsive.margin(20),
@@ -295,6 +278,13 @@ const styles = StyleSheet.create({
   value: {
     fontSize: responsive.fontSize(15),
     marginTop: 3,
+  },
+  input: {
+    fontSize: responsive.fontSize(15),
+    borderBottomWidth: 1,
+    borderColor: "#aaa",
+    paddingVertical: 4,
+    marginTop: 5,
   },
   logoutButton: {
     width: "90%",

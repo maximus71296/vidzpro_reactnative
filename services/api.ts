@@ -68,9 +68,11 @@ export interface VideosByCategoryResponse {
   message: string;
   data: {
     current_page: number;
+    last_page: number;
     data: Video[];
   };
 }
+
 
 export interface VideoDetailResponse {
   status: "1" | "0";
@@ -93,6 +95,18 @@ export interface VideoWatchedStatusResponse {
     video_title: string;
     is_completed: number;
     completed_At: string;
+  };
+}
+
+export interface UpdateUserProfileResponse {
+  status: "1" | "0";
+  message: string;
+  data?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    name: string;
+    phone: string;
   };
 }
 
@@ -216,17 +230,16 @@ export const getVideoCategories = async (): Promise<VideoCategoryResponse> => {
 
 // ====== Get Videos by Category ======
 export const getVideosByCategory = async (
-  categoryType: string
+  categoryType: string,
+  page: number = 1
 ): Promise<VideosByCategoryResponse> => {
   const token = await AsyncStorage.getItem("access_token");
   if (!token) throw new Error("Token not found");
 
   try {
-    console.log("📦 Sending category type:", categoryType);
-
     const response = await axios.post(
-      `${BASE_URL}/videos-by-category`,
-      { category: categoryType }, // send type string instead of numeric id
+      `${BASE_URL}/videos-by-category?page=${page}`,
+      { category: categoryType },
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -245,6 +258,7 @@ export const getVideosByCategory = async (
     throw error;
   }
 };
+
 
 // ====== Generate Certificate ======
 export const generateCertificate = async (type: "toolbox" | "isovideos") => {
@@ -355,6 +369,42 @@ export const getVideoWatchedStatus = async (video_id: number): Promise<VideoWatc
     };
   }
 };
+
+// Update User Profile
+export const updateUserProfile = async (accessToken: string, body: {
+  first_name: string;
+  last_name: string;
+  phone: string;
+}): Promise<UpdateUserProfileResponse> => {
+  try {
+    const accessToken = await AsyncStorage.getItem("access_token");
+
+    if (!accessToken) {
+      throw new Error("Access token not found");
+    }
+
+    const response = await axios.post<UpdateUserProfileResponse>(
+      `${BASE_URL}/user/update`,
+      body,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Update Profile API error:", error?.response?.data || error.message);
+    return {
+      status: "0",
+      message: "Something went wrong. Please try again.",
+    };
+  }
+};
+
 
 
 

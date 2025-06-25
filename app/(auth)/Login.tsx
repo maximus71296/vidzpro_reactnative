@@ -109,7 +109,7 @@ const Login = () => {
               activeOpacity={0.5}
               onPress={() => router.push('/(auth)/ForgotPassword')}
             >
-              <Text style={styles.forgotPasswordBtnText}>Forgot Password</Text>
+              <Text style={styles.forgotPasswordBtnText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -55,6 +55,10 @@ const MyVideos: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [videoModalVisible, setVideoModalVisible] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+
   const vimeoUrl = "https://player.vimeo.com/video/1071440600";
 
   const primaryColor = "#F9BC11";
@@ -78,23 +82,44 @@ const MyVideos: React.FC = () => {
   };
 
   // Fetch videos by category name
-  const fetchVideos = async (categoryName: string) => {
-    setLoading(true);
+  const fetchVideos = async (
+    categoryName: string,
+    page: number = 1,
+    isLoadMore = false
+  ) => {
+    if (!isLoadMore) setLoading(true);
     setError("");
+
     try {
-      const response = await getVideosByCategory(categoryName);
-      if (response.status === "1" && response.data?.data?.length > 0) {
-        setVideos(response.data.data);
+      const response = await getVideosByCategory(categoryName, page);
+
+      if (response.status === "1") {
+        if (isLoadMore) {
+          setVideos((prev) => [...prev, ...response.data.data]);
+        } else {
+          setVideos(response.data.data);
+        }
+        setCurrentPage(response.data.current_page);
+        setLastPage(response.data.last_page);
       } else {
-        setVideos([]);
+        if (!isLoadMore) setVideos([]);
         setError("No videos found for this category.");
       }
     } catch (err) {
       console.error("Error fetching videos:", err);
       setError("Failed to load videos.");
     } finally {
-      setLoading(false);
+      if (!isLoadMore) setLoading(false);
+      setIsFetchingMore(false);
     }
+  };
+
+  // Load More Function
+  const loadMoreVideos = () => {
+    if (isFetchingMore || currentPage >= lastPage) return;
+
+    setIsFetchingMore(true);
+    fetchVideos(selectedCategory?.name || "", currentPage + 1, true);
   };
 
   // On component mount, fetch categories
@@ -234,6 +259,14 @@ const MyVideos: React.FC = () => {
     // Use toLocaleString, which works for both date-only and date-with-time.
     return dateToFormat.toLocaleString("en-US", options);
   };
+
+  useEffect(() => {
+    if (selectedCategory) {
+      setCurrentPage(1); // ✅ reset page
+      setLastPage(1); // ✅ reset lastPage
+      fetchVideos(selectedCategory.name, 1);
+    }
+  }, [selectedCategory]);
 
   return (
     <>
@@ -383,17 +416,30 @@ const MyVideos: React.FC = () => {
                     </View>
 
                     <View style={styles.assignedDateViewColumn}>
-  <Text style={styles.assignedDateText}>
-    Assigned: {formatSmartDate(item.assign_date)}
-  </Text>
-  <Text style={styles.assignedDateText}>
-    {item.is_completed === 0
-      ? "Not completed ❌"
-      : `Completed: ${formatSmartDate(item.completed_date)} ✅`}
-  </Text>
-</View>
+                      {item.is_completed === 0 ? (
+                        <>
+                          <Text style={styles.assignedDateText}>
+                            Assigned: {formatSmartDate(item.assign_date)}
+                          </Text>
+                          <Text style={styles.assignedDateText}>
+                            Not completed ❌
+                          </Text>
+                        </>
+                      ) : (
+                        <Text style={styles.assignedDateText}>
+                          Completed: {formatSmartDate(item.completed_date)} ✅
+                        </Text>
+                      )}
+                    </View>
                   </TouchableOpacity>
                 )}
+                onEndReached={loadMoreVideos}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={
+                  isFetchingMore ? (
+                    <ActivityIndicator size="small" color={primaryColor} />
+                  ) : null
+                }
               />
             )}
           </View>
@@ -587,12 +633,14 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
   },
   assignedDateViewColumn: {
-  flexDirection: "column", // makes it stack vertically
-  gap: 4,
-  borderTopWidth: 1,
-  marginTop: responsive.margin(10),
-  paddingTop: responsive.padding(5),
-},
+    flexDirection: "row",
+    gap: 4,
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    marginTop: responsive.margin(10),
+    paddingTop: responsive.padding(5),
+  },
   assignedDateText: {
     fontWeight: "500",
     fontSize: responsive.fontSize(12),
