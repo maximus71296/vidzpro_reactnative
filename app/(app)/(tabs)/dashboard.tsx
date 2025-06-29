@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // ✅ More reliable
 import Toast from "react-native-toast-message";
 
 const Dashboard = () => {
@@ -54,7 +53,7 @@ const Dashboard = () => {
   return (
     <>
       {/* ✅ Ensures status bar is styled properly */}
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
   
         <View style={styles.header}>
           <Text style={styles.headingText}>Dashboard</Text>
@@ -80,7 +79,7 @@ const Dashboard = () => {
             </TouchableOpacity>
           </View>
         )}
-      </SafeAreaView>
+      </View>
     </>
   );
 };

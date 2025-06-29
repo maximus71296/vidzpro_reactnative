@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Image,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -55,7 +54,7 @@ const Login = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar backgroundColor="#033337" barStyle="light-content" />
       <View style={styles.mainContentView}>
         <Image source={logo} style={styles.logoImg} resizeMode="contain" />
@@ -114,7 +113,7 @@ const Login = () => {
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

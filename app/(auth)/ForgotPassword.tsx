@@ -4,13 +4,11 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Image,
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Toast from "react-native-toast-message";
 
@@ -66,8 +64,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#033337" barStyle="light-content" />
+    <View style={styles.container}>
       <View style={styles.mainContentView}>
         <Image source={logo} style={styles.logoImg} resizeMode="contain" />
         <View style={{ width: "100%", alignItems: "center" }}>
@@ -104,7 +101,7 @@ const ForgotPassword = () => {
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

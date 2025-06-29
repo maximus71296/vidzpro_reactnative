@@ -7,13 +7,13 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import type { WebView as WebViewType } from "react-native-webview";
 import { WebView } from "react-native-webview";
 
@@ -29,6 +29,39 @@ const VideoDetails: React.FC = () => {
   const [webViewKey, setWebViewKey] = useState(0);
   const [selectedFaqVideo, setSelectedFaqVideo] = useState<string | null>(null);
   const [videoStatus, setVideoStatus] = useState<VideoWatchedStatusResponse["data"] | null>(null);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+const handleRefresh = async () => {
+  setRefreshing(true);
+  try {
+    if (video_id) {
+      const data = await getVideoDetail(Number(video_id));
+      setVideoData(data);
+
+      const localAck = await AsyncStorage.getItem(`video_acknowledged_${video_id}`);
+      if (localAck === "true" || data.is_completed === 1) {
+        setAlreadyAcknowledged(true);
+        setHasAcknowledged(true);
+      } else {
+        setAlreadyAcknowledged(false);
+        setHasAcknowledged(false);
+      }
+
+      const status = await getVideoWatchedStatus(Number(video_id));
+      if (status.status === "1" && status.data) {
+        setVideoStatus(status.data);
+      }
+    }
+  } catch (error) {
+    console.error("Refresh failed:", error);
+    Alert.alert("Error", "Failed to refresh video details.");
+  } finally {
+    setRefreshing(false);
+    setWebViewKey(prev => prev + 1); // refresh WebView too
+  }
+};
+
 
   useEffect(() => {
     const fetchVideoDetails = async () => {
@@ -126,7 +159,7 @@ const VideoDetails: React.FC = () => {
   const faqVimeoId = selectedFaqVideo ? getVimeoIdFromUrl(selectedFaqVideo) : null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headingBackButtonView}>
           <TouchableOpacity activeOpacity={0.5} onPress={() => router.back()}>
@@ -138,7 +171,9 @@ const VideoDetails: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView>
+      <ScrollView refreshControl={
+    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+  }>
         <View style={styles.videoContainer}>
           <WebView
             key={webViewKey}
@@ -200,7 +235,7 @@ const VideoDetails: React.FC = () => {
 
         <View style={styles.videoDetailsView}>
           <Text style={styles.title}>{videoData.title}</Text>
-          <Text style={styles.sectionTitle}>Description:</Text>
+          {/* <Text style={styles.sectionTitle}>Description:</Text>
           {videoData.description.replace(/<[^>]+>/g, "")
             .split(/\n|•|-|\d+\./)
             .filter((item) => item.trim() !== "")
@@ -208,9 +243,9 @@ const VideoDetails: React.FC = () => {
               <Text key={index} style={[styles.text, { paddingLeft: 10 }]}>
                 • {item.trim()}
               </Text>
-            ))}
+            ))} */}
 
-          <Text style={[styles.sectionTitle, { marginTop: responsive.margin(10) }]}>
+          <Text style={styles.sectionTitle}>
             Key Points:
           </Text>
           {videoData.key_points.replace(/<[^>]+>/g, "")
@@ -247,7 +282,7 @@ const VideoDetails: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

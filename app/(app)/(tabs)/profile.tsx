@@ -6,14 +6,12 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 const Profile = () => {
@@ -146,15 +144,15 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <View style={styles.centered}>
         <ActivityIndicator size="large" color="#033337" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={{ backgroundColor: "#fff", height: Dimensions.get("window").height - 150 }}>
+    <View style={styles.container}>
+      <View style={{ backgroundColor: "#fff", flex: 1 }}>
         <View style={styles.header}>
           <Text style={styles.headingText}>Profile</Text>
         </View>
@@ -221,7 +219,7 @@ const Profile = () => {
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

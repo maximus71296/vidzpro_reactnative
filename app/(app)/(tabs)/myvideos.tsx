@@ -19,7 +19,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // ✅ More reliable
 import Toast from "react-native-toast-message";
 import WebView from "react-native-webview";
 
@@ -270,13 +269,8 @@ const MyVideos: React.FC = () => {
 
   return (
     <>
-      <SafeAreaView style={styles.container}>
-        <View
-          style={{
-            backgroundColor: "#fff",
-            height: Dimensions.get("window").height - 150,
-          }}
-        >
+      <View style={styles.container}>
+        <View style={{ backgroundColor: "#fff", flex: 1 }}>
           <View style={styles.header}>
             <Text style={styles.headingText}>My Videos</Text>
             <View style={styles.dateView}>
@@ -368,7 +362,7 @@ const MyVideos: React.FC = () => {
                       <Image
                         source={{ uri: item.video_thumbnail }}
                         style={styles.videoThumbnail}
-                        resizeMode="cover"
+                        resizeMode="contain"
                       />
                     </View>
 
@@ -379,7 +373,7 @@ const MyVideos: React.FC = () => {
                         marginBottom: responsive.margin(5),
                       }}
                     >
-                      {item.video_title}
+                      Key Points
                     </Text>
 
                     <View style={{ paddingHorizontal: 10 }}>
@@ -496,7 +490,7 @@ const MyVideos: React.FC = () => {
             </TouchableOpacity>
           </View>
         </Modal>
-      </SafeAreaView>
+      </View>
     </>
   );
 };
