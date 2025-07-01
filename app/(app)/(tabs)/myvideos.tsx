@@ -135,37 +135,46 @@ const MyVideos: React.FC = () => {
 
   // Certificate download handler (dynamic & type-safe)
   const downloadCertificate = async (categoryType: string) => {
-    const type = certificateTypeMap[categoryType.toLowerCase()];
-    if (!type) {
-      Toast.show({
-        type: "error",
-        text1: "Invalid certificate type",
-        text2: `No certificate available for category "${categoryType}"`,
-      });
-      return;
-    }
+  const type = certificateTypeMap[categoryType.toLowerCase()];
+  if (!type) {
+    Toast.show({
+      type: "error",
+      text1: "Invalid certificate type",
+      text2: `No certificate available for category "${categoryType}"`,
+    });
+    return;
+  }
 
-    try {
-      setDownloading(true);
-      console.log("🚀 Starting downloadCertificate for type:", type);
+  try {
+    setDownloading(true);
+    console.log("🚀 Starting downloadCertificate for type:", type);
 
-      const res = await generateCertificate(type);
-      // Open the certificate URL in the external browser
-      if (res.file_url) {
-        Linking.openURL(res.file_url);
-      }
-    } catch (err) {
-      console.error("❌ Download Error:", err);
-      Toast.show({
-        type: "error",
-        text1: "Download Failed",
-        text2: "Something went wrong.",
-      });
-    } finally {
-      setDownloading(false);
-      setShowDropdown(false);
-    }
-  };
+    const res = await generateCertificate(type);
+
+    if (res?.file_url) {
+  const url = `${res.file_url}?download=1`; // or customize if needed
+  Linking.openURL(url);
+} else {
+  Toast.show({
+    type: "error",
+    text1: "Download Failed",
+    text2: "Certificate link not found.",
+  });
+}
+
+  } catch (err) {
+    console.error("❌ Download Error:", err);
+    Toast.show({
+      type: "error",
+      text1: "Download Failed",
+      text2: "Something went wrong.",
+    });
+  } finally {
+    setDownloading(false);
+    setShowDropdown(false);
+  }
+};
+
 
   const formatSmartDate = (
     dateInput?: string | number | Date | null
