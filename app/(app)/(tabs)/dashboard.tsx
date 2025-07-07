@@ -9,9 +9,10 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import dashboardImage from "../../../assets/images/dahsboardImage.png";
 
 const Dashboard = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -54,7 +55,6 @@ const Dashboard = () => {
     <>
       {/* ✅ Ensures status bar is styled properly */}
       <View style={styles.container}>
-  
         <View style={styles.header}>
           <Text style={styles.headingText}>Dashboard</Text>
         </View>
@@ -66,13 +66,13 @@ const Dashboard = () => {
             style={{ marginTop: 100 }}
           />
         ) : (
-            <View style={{ width: "100%", alignItems: "center", backgroundColor: "#fff", height: "100%" }}>
+          <View style={styles.imageContainer}>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => router.push("/(app)/(tabs)/myvideos")}
             >
               <Image
-                source={imageUrl ? { uri: imageUrl } : undefined}
+                source={dashboardImage}
                 style={styles.imageButton}
                 resizeMode="contain"
               />
@@ -87,7 +87,7 @@ const Dashboard = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#033337",
+    backgroundColor: "#fff",
   },
   header: {
     alignItems: "center",
@@ -104,10 +104,14 @@ const styles = StyleSheet.create({
   },
   imageButton: {
     width: responsive.width(350),
-    height: responsive.height(400),
-    marginTop: responsive.margin(20),
+    height: responsive.height(450),
     borderRadius: responsive.borderRadius(20),
     overflow: "hidden",
+  },
+  imageContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

@@ -263,7 +263,7 @@ const handleRefresh = async () => {
             <Text style={{ fontSize: 16, fontWeight: "bold", paddingHorizontal: 16, marginBottom: 8 }}>
               FAQs (Tap to Play):
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 16 }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ padding: 16 }}>
               {videoData.faqs.map((faq, index) => (
                 <TouchableOpacity
                   key={index}
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     backgroundColor: "#033337",
-    padding: 15,
+    padding: responsive.padding(15),
     flexDirection: "row",
     justifyContent: "space-between",
   },
@@ -313,45 +313,45 @@ const styles = StyleSheet.create({
   },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   videoContainer: {
-    margin: 10,
+    margin: responsive.margin(10),
     height: responsive.height(200),
-    borderRadius: 10,
+    borderRadius: responsive.borderRadius(10),
     overflow: "hidden",
   },
   webview: { flex: 1 },
   buttonGrey: {
     backgroundColor: "#ccc",
-    padding: 12,
-    borderRadius: 8,
+    padding: responsive.fontSize(14),
+    borderRadius: responsive.borderRadius(8),
     flex: 1,
     alignItems: "center",
   },
   buttonGreen: {
     backgroundColor: "#4CAF50",
-    padding: 12,
-    borderRadius: 8,
+    padding: responsive.padding(12),
+    borderRadius: responsive.borderRadius(8),
     flex: 1,
     alignItems: "center",
   },
   videoDetailsView: {
     backgroundColor: "#fff",
-    marginHorizontal: 10,
-    padding: 15,
-    borderRadius: 10,
+    marginHorizontal: responsive.margin(10),
+    padding: responsive.padding(15),
+    borderRadius: responsive.borderRadius(10),
   },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: "600" },
-  text: { fontSize: 13, marginTop: 4, color: "#333" },
+  title: { fontSize: responsive.fontSize(20), fontWeight: "bold", marginBottom: responsive.margin(10) },
+  sectionTitle: { fontSize: responsive.fontSize(16), fontWeight: "600" },
+  text: { fontSize: responsive.fontSize(14), marginTop: responsive.margin(4), color: "#333" },
   faqCard: {
     backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: 10,
-    marginRight: 10,
-    width: 180,
+    padding: responsive.padding(12),
+    borderRadius: responsive.borderRadius(10),
+    marginBottom: responsive.margin(10),
+    width: responsive.width(180),
   },
   faqText: {
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: responsive.fontSize(14),
   },
 });
 

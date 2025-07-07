@@ -135,46 +135,44 @@ const MyVideos: React.FC = () => {
 
   // Certificate download handler (dynamic & type-safe)
   const downloadCertificate = async (categoryType: string) => {
-  const type = certificateTypeMap[categoryType.toLowerCase()];
-  if (!type) {
-    Toast.show({
-      type: "error",
-      text1: "Invalid certificate type",
-      text2: `No certificate available for category "${categoryType}"`,
-    });
-    return;
-  }
+    const type = certificateTypeMap[categoryType.toLowerCase()];
+    if (!type) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid certificate type",
+        text2: `No certificate available for category "${categoryType}"`,
+      });
+      return;
+    }
 
-  try {
-    setDownloading(true);
-    console.log("🚀 Starting downloadCertificate for type:", type);
+    try {
+      setDownloading(true);
+      console.log("🚀 Starting downloadCertificate for type:", type);
 
-    const res = await generateCertificate(type);
+      const res = await generateCertificate(type);
 
-    if (res?.file_url) {
-  const url = `${res.file_url}?download=1`; // or customize if needed
-  Linking.openURL(url);
-} else {
-  Toast.show({
-    type: "error",
-    text1: "Download Failed",
-    text2: "Certificate link not found.",
-  });
-}
-
-  } catch (err) {
-    console.error("❌ Download Error:", err);
-    Toast.show({
-      type: "error",
-      text1: "Download Failed",
-      text2: "Something went wrong.",
-    });
-  } finally {
-    setDownloading(false);
-    setShowDropdown(false);
-  }
-};
-
+      if (res?.file_url) {
+        const url = `${res.file_url}?download=1`; // or customize if needed
+        Linking.openURL(url);
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Download Failed",
+          text2: "Certificate link not found.",
+        });
+      }
+    } catch (err) {
+      console.error("❌ Download Error:", err);
+      Toast.show({
+        type: "error",
+        text1: "Download Failed",
+        text2: "Something went wrong.",
+      });
+    } finally {
+      setDownloading(false);
+      setShowDropdown(false);
+    }
+  };
 
   const formatSmartDate = (
     dateInput?: string | number | Date | null
@@ -286,7 +284,7 @@ const MyVideos: React.FC = () => {
                   <Text
                     style={{
                       color: isActive ? secondaryColor : primaryColor,
-                      fontSize: 14,
+                      fontSize: responsive.fontSize(14),
                       fontWeight: "500",
                     }}
                   >
@@ -298,7 +296,7 @@ const MyVideos: React.FC = () => {
           </View>
 
           {/* Video List */}
-          <View style={{ paddingHorizontal: 20, flex: 1, marginTop: 10 }}>
+          <View style={{ paddingHorizontal: responsive.padding(10), flex: 1, marginTop: responsive.padding(15) }}>
             {loading ? (
               <ActivityIndicator size="large" color={primaryColor} />
             ) : error ? (
@@ -527,9 +525,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   buttonBase: {
-    flexGrow: 1,
-    padding: 15,
-    borderRadius: 7,
+    flex: 0.5,
+    padding: responsive.padding(15),
+    borderRadius: responsive.borderRadius(7),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -548,44 +546,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 999,
   },
-
   modalContent: {
     width: "80%",
     backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
+    padding: responsive.padding(20),
+    borderRadius: responsive.borderRadius(10),
     elevation: 10,
     alignItems: "center",
   },
-
   modalTitle: {
-    fontSize: 18,
+    fontSize: responsive.fontSize(18),
     fontWeight: "600",
-    marginBottom: 15,
+    marginBottom: responsive.margin(15),
   },
 
   modalOption: {
     backgroundColor: "#F9BC11",
-    paddingVertical: 10,
-    paddingHorizontal: 25,
-    borderRadius: 5,
-    marginVertical: 5,
+    paddingVertical: responsive.padding(10),
+    paddingHorizontal: responsive.padding(25),
+    borderRadius: responsive.borderRadius(5),
+    marginVertical: responsive.margin(5),
     width: "100%",
     alignItems: "center",
   },
 
   modalOptionText: {
-    fontSize: 16,
+    fontSize: responsive.fontSize(16),
     fontWeight: "500",
     color: "#033337",
   },
 
   modalCancel: {
-    marginTop: 10,
+    marginTop: responsive.margin(20),
   },
 
   modalCancelText: {
-    fontSize: 14,
+    fontSize: responsive.fontSize(14),
     color: "#666",
   },
   videoCardView: {
@@ -620,19 +616,19 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     overflow: "hidden",
-    padding: 10,
+    padding: responsive.padding(10),
   },
   closeModalButton: {
     position: "absolute",
     top: 40,
     right: 30,
-    padding: 10,
+    padding: responsive.padding(10),
     backgroundColor: "#000",
-    borderRadius: 30,
+    borderRadius: responsive.borderRadius(30),
   },
   closeModalText: {
     color: "#fff",
-    fontSize: 20,
+    fontSize: responsive.fontSize(20),
   },
 });
 
