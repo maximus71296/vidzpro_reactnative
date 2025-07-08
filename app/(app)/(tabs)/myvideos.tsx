@@ -58,6 +58,7 @@ const MyVideos: React.FC = () => {
   const [lastPage, setLastPage] = useState(1);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
+
   const vimeoUrl = "https://player.vimeo.com/video/1071440600";
 
   const primaryColor = "#F9BC11";
@@ -267,33 +268,38 @@ const MyVideos: React.FC = () => {
 
           {/* Category Tabs */}
           <View style={styles.buttonView}>
-            {categories.map((cat) => {
-              const isActive = selectedCategory?.id === cat.id;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.buttonBase,
-                    {
-                      backgroundColor: isActive ? primaryColor : secondaryColor,
-                    },
-                  ]}
-                  onPress={() => setSelectedCategory(cat)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={{
-                      color: isActive ? secondaryColor : primaryColor,
-                      fontSize: responsive.fontSize(14),
-                      fontWeight: "500",
-                    }}
-                  >
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+  {categories.map((cat) => {
+    const isActive = selectedCategory?.id === cat.id;
+    const isOnlyOne = categories.length === 1; // 👈 check if only 1 button
+
+    return (
+      <TouchableOpacity
+        key={cat.id}
+        style={[
+          styles.buttonBase,
+          {
+            backgroundColor: isActive ? primaryColor : secondaryColor,
+            width: isOnlyOne ? "100%" : "auto", // 👈 full width only if it's the only button
+          },
+        ]}
+        onPress={() => setSelectedCategory(cat)}
+        activeOpacity={0.7}
+      >
+        <Text
+          style={{
+            color: isActive ? secondaryColor : primaryColor,
+            fontSize: responsive.fontSize(14),
+            fontWeight: "500",
+            textAlign: "center", // center for full-width
+          }}
+        >
+          {cat.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  })}
+</View>
+
 
           {/* Video List */}
           <View style={{ paddingHorizontal: responsive.padding(10), flex: 1, marginTop: responsive.padding(15) }}>
