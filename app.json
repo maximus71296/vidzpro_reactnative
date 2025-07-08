@@ -8,11 +8,9 @@
     "scheme": "vidzpro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "package": "com.rajatgautam071296.vidzpro",
       "edgeToEdgeEnabled": true,
@@ -21,13 +19,11 @@
         "backgroundColor": "#ffffff"
       }
     },
-
     "web": {
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro",
       "output": "static"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -38,20 +34,19 @@
           "resizeMode": "contain",
           "backgroundColor": "#033337"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
-
     "experiments": {
       "typedRoutes": true
     },
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "412f5da7-d078-4977-aea0-0e81ecc6bf7f"
       }
     },
-
     "owner": "rajatgautam071296"
   }
 }
