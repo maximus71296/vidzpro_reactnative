@@ -57,6 +57,8 @@ const MyVideos: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [showIsoModal, setShowIsoModal] = useState(false);
+  const [isoCategories, setIsoCategories] = useState<VideoCategory[]>([]);
 
 
   const vimeoUrl = "https://player.vimeo.com/video/1071440600";
@@ -71,6 +73,7 @@ const MyVideos: React.FC = () => {
       if (response.status === "1") {
         setCategories(response.data);
         setSelectedCategory(response.data[0]);
+        setIsoCategories(response.iso);
         setMessage(response.message);
       } else {
         setError("Failed to fetch categories.");
@@ -151,6 +154,16 @@ const MyVideos: React.FC = () => {
       console.log("🚀 Starting downloadCertificate for type:", type);
 
       const res = await generateCertificate(type);
+
+      // Check if the API returned an error
+      if (res.status === 0 || res.status === "0") {
+        Toast.show({
+          type: "error",
+          text1: "Download Failed",
+          text2: res.message || "Failed to generate certificate",
+        });
+        return;
+      }
 
       if (res?.file_url) {
         const url = `${res.file_url}?download=1`; // or customize if needed
@@ -266,39 +279,57 @@ const MyVideos: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Category Tabs */}
+          {/* ToolBox & ISO Buttons */}
           <View style={styles.buttonView}>
-  {categories.map((cat) => {
-    const isActive = selectedCategory?.id === cat.id;
-    const isOnlyOne = categories.length === 1; // 👈 check if only 1 button
+            <TouchableOpacity
+              style={[
+                styles.buttonBase,
+                {
+                  backgroundColor: selectedCategory?.type === "toolbox" ? primaryColor : secondaryColor,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => {
+                const toolboxCategory = categories.find(cat => cat.type === "toolbox");
+                if (toolboxCategory) {
+                  setSelectedCategory(toolboxCategory);
+                }
+              }}
+            >
+              <Text
+                style={{
+                  color: selectedCategory?.type === "toolbox" ? secondaryColor : primaryColor,
+                  fontSize: responsive.fontSize(14),
+                  fontWeight: "500",
+                  textAlign: "center",
+                }}
+              >
+                ToolBox
+              </Text>
+            </TouchableOpacity>
 
-    return (
-      <TouchableOpacity
-        key={cat.id}
-        style={[
-          styles.buttonBase,
-          {
-            backgroundColor: isActive ? primaryColor : secondaryColor,
-            width: isOnlyOne ? "100%" : "auto", // 👈 full width only if it's the only button
-          },
-        ]}
-        onPress={() => setSelectedCategory(cat)}
-        activeOpacity={0.7}
-      >
-        <Text
-          style={{
-            color: isActive ? secondaryColor : primaryColor,
-            fontSize: responsive.fontSize(14),
-            fontWeight: "500",
-            textAlign: "center", // center for full-width
-          }}
-        >
-          {cat.name}
-        </Text>
-      </TouchableOpacity>
-    );
-  })}
-</View>
+            <TouchableOpacity
+              style={[
+                styles.buttonBase,
+                {
+                  backgroundColor: selectedCategory?.type === "isovideos" ? primaryColor : secondaryColor,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setShowIsoModal(true)}
+            >
+              <Text
+                style={{
+                  color: selectedCategory?.type === "isovideos" ? secondaryColor : primaryColor,
+                  fontSize: responsive.fontSize(14),
+                  fontWeight: "500",
+                  textAlign: "center",
+                }}
+              >
+                ISO
+              </Text>
+            </TouchableOpacity>
+          </View>
 
 
           {/* Video List */}
@@ -442,6 +473,35 @@ const MyVideos: React.FC = () => {
               </View>
             </View>
           )}
+
+          {/* ISO Categories Modal */}
+          {showIsoModal && (
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select ISO Category</Text>
+
+                {isoCategories.map((isoCategory) => (
+                  <TouchableOpacity
+                    key={isoCategory.id}
+                    style={styles.modalOption}
+                    onPress={() => {
+                      setSelectedCategory(isoCategory);
+                      setShowIsoModal(false);
+                    }}
+                  >
+                    <Text style={styles.modalOptionText}>{isoCategory.name}</Text>
+                  </TouchableOpacity>
+                ))}
+
+                <TouchableOpacity
+                  onPress={() => setShowIsoModal(false)}
+                  style={styles.modalCancel}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Video Modal */}
@@ -464,6 +524,7 @@ const MyVideos: React.FC = () => {
           </View>
         </Modal>
       </View>
+      <Toast />
     </>
   );
 };

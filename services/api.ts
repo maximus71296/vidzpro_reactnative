@@ -42,6 +42,7 @@ export interface VideoCategoryResponse {
   status: string;
   message: string;
   data: VideoCategory[];
+  iso: VideoCategory[];
 }
 
 type LoginResponse = LoginResponseSuccess | LoginResponseFail;
@@ -283,11 +284,28 @@ export const generateCertificate = async (type: "toolbox" | "isovideos") => {
     );
 
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ generateCertificate error:", error);
+    
+    // Extract error message from API response
+    let errorMessage = "Failed to generate certificate";
+    
+    if (axios.isAxiosError(error)) {
+      // If it's an axios error, try to get the message from the response
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return {
       status: 0,
-      message: "Failed to generate certificate",
+      message: errorMessage,
     };
   }
 };
