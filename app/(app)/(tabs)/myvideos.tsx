@@ -39,7 +39,7 @@ type VideoItem = {
 // Map your category strings to allowed certificate types
 const certificateTypeMap: Record<string, "toolbox" | "isovideos"> = {
   toolbox: "toolbox",
-  isovideos: "isovideos",
+  isovideos: "iso 9001",
   // add more if needed
 };
 
