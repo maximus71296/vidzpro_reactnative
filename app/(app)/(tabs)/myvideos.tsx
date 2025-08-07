@@ -37,7 +37,7 @@ type VideoItem = {
 };
 
 // Map your category strings to allowed certificate types
-const certificateTypeMap: Record<string, "toolbox" | "isovideos"> = {
+const certificateTypeMap: Record<string, "toolbox" | "iso 9001"> = {
   toolbox: "toolbox",
   isovideos: "iso 9001",
   // add more if needed
@@ -153,7 +153,8 @@ const MyVideos: React.FC = () => {
       setDownloading(true);
       console.log("🚀 Starting downloadCertificate for type:", type);
 
-      const res = await generateCertificate(type);
+      // Fix: Ensure type is correct for generateCertificate
+      const res = await generateCertificate(type as "toolbox" | "isovideos");
 
       // Check if the API returned an error
       if (res.status === 0 || res.status === "0") {
