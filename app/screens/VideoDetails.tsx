@@ -44,23 +44,47 @@ const VideoDetails: React.FC = () => {
   const isLandscape = width > height;
 
   useEffect(() => {
-  const backAction = () => {
-    if (isFullscreen) {
-      toggleFullscreen(); // exits fullscreen
-      return true; // prevent default back action
-    }
-    return false; // allow default back behavior
-  };
+    const backAction = () => {
+      if (isFullscreen) {
+        toggleFullscreen(); // exits fullscreen
+        return true; // prevent default back action
+      }
+      return false; // allow default back behavior
+    };
 
-  const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
 
-  return () => backHandler.remove(); // cleanup on unmount
-}, [isFullscreen]);
-
+    return () => backHandler.remove(); // cleanup on unmount
+  }, [isFullscreen]);
 
   useEffect(() => {
     if (video_id) fetchVideoDetails();
   }, [video_id]);
+
+  // Auto-mark as complete if video ends and not already marked
+  useEffect(() => {
+    if (
+      isVideoEnded &&
+      canMarkComplete &&
+      !hasAcknowledged &&
+      !alreadyAcknowledged &&
+      videoStatus?.is_completed !== 1 &&
+      !autoMarked
+    ) {
+      (async () => {
+        try {
+          await getVideoWatchedStatus(Number(video_id));
+          await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
+          setHasAcknowledged(true);
+          setAlreadyAcknowledged(true);
+          setAutoMarked(true);
+          alert("✅ Video marked as completed (auto).");
+        } catch {
+          alert("❌ Failed to complete video.");
+        }
+      })();
+    }
+  }, [isVideoEnded, canMarkComplete, hasAcknowledged, alreadyAcknowledged, videoStatus, autoMarked, video_id]);
 
   const fetchVideoDetails = async () => {
     try {
@@ -181,24 +205,6 @@ const VideoDetails: React.FC = () => {
   }
 
   const baseVimeoId = getVimeoIdFromUrl(videoData.url);
-
-  // Auto-mark as complete if video ends and not already marked
-  React.useEffect(() => {
-    if (isVideoEnded && canMarkComplete && !hasAcknowledged && !alreadyAcknowledged && videoStatus?.is_completed !== 1 && !autoMarked) {
-      (async () => {
-        try {
-          await getVideoWatchedStatus(Number(video_id));
-          await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
-          setHasAcknowledged(true);
-          setAlreadyAcknowledged(true);
-          setAutoMarked(true);
-          alert("✅ Video marked as completed (auto).");
-        } catch {
-          alert("❌ Failed to complete video.");
-        }
-      })();
-    }
-  }, [isVideoEnded, canMarkComplete, hasAcknowledged, alreadyAcknowledged, videoStatus, autoMarked, video_id]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -346,7 +352,6 @@ const VideoDetails: React.FC = () => {
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
