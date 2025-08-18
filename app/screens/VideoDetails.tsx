@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import React, { useEffect, useRef, useState } from "react";
+// import { ProgressBar } from "react-native-paper";
 import {
   ActivityIndicator,
   Alert,
@@ -35,6 +36,9 @@ const VideoDetails: React.FC = () => {
   const [videoStatus, setVideoStatus] = useState<VideoWatchedStatusResponse["data"] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFaqVideo, setSelectedFaqVideo] = useState<string | null>(null);
+  const [videoWatchedPercent, setVideoWatchedPercent] = useState(0);
+  const [canMarkComplete, setCanMarkComplete] = useState(false);
+  const [autoMarked, setAutoMarked] = useState(false);
 
   const { width, height } = window;
   const isLandscape = width > height;
@@ -111,22 +115,31 @@ const VideoDetails: React.FC = () => {
         <script>
           const iframe = document.getElementById('vimeoPlayer');
           window.vimeoPlayer = new Vimeo.Player(iframe);
-          let timeWatched = 0;
-
+          let lastPercent = 0;
+          let duration = 0;
+          let watchedSeconds = 0;
+          let lastTime = 0;
+          window.vimeoPlayer.on('loaded', function(data) {
+            duration = data.duration;
+          });
+          window.vimeoPlayer.getDuration().then(function(d) { duration = d; });
           window.vimeoPlayer.on('timeupdate', function(data) {
-            if (data.seconds - 1 < timeWatched && data.seconds > timeWatched) {
-              timeWatched = data.seconds;
+            if (duration > 0) {
+              // Only count as watched if user is not skipping ahead by more than 5 seconds
+              if (Math.abs(data.seconds - lastTime) < 5) {
+                watchedSeconds += data.seconds - lastTime;
+              }
+              lastTime = data.seconds;
+              let percent = (watchedSeconds / duration) * 100;
+              if (percent > 100) percent = 100;
+              if (percent > lastPercent) {
+                lastPercent = percent;
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: "progress", percent: percent }));
+              }
             }
           });
-
           window.vimeoPlayer.on('ended', function() {
-            window.ReactNativeWebView.postMessage("videoEnded");
-          });
-
-          window.vimeoPlayer.on('seeked', function(data) {
-            if (timeWatched < data.seconds) {
-              window.vimeoPlayer.setCurrentTime(timeWatched);
-            }
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "videoEnded" }));
           });
         </script>
       </body>
@@ -169,6 +182,24 @@ const VideoDetails: React.FC = () => {
 
   const baseVimeoId = getVimeoIdFromUrl(videoData.url);
 
+  // Auto-mark as complete if video ends and not already marked
+  React.useEffect(() => {
+    if (isVideoEnded && canMarkComplete && !hasAcknowledged && !alreadyAcknowledged && videoStatus?.is_completed !== 1 && !autoMarked) {
+      (async () => {
+        try {
+          await getVideoWatchedStatus(Number(video_id));
+          await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
+          setHasAcknowledged(true);
+          setAlreadyAcknowledged(true);
+          setAutoMarked(true);
+          alert("✅ Video marked as completed (auto).");
+        } catch {
+          alert("❌ Failed to complete video.");
+        }
+      })();
+    }
+  }, [isVideoEnded, canMarkComplete, hasAcknowledged, alreadyAcknowledged, videoStatus, autoMarked, video_id]);
+
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       {isFullscreen && <StatusBar hidden />}
@@ -192,8 +223,23 @@ const VideoDetails: React.FC = () => {
           domStorageEnabled
           allowsFullscreenVideo
           onMessage={(event) => {
-            if (event.nativeEvent.data === "videoEnded") {
-              setIsVideoEnded(true);
+            try {
+              const data = JSON.parse(event.nativeEvent.data);
+              if (data.type === "progress") {
+                setVideoWatchedPercent(data.percent);
+                if (data.percent >= 95 && !canMarkComplete) setCanMarkComplete(true);
+              } else if (data.type === "videoEnded") {
+                setIsVideoEnded(true);
+                setVideoWatchedPercent(100);
+                setCanMarkComplete(true);
+              }
+            } catch {
+              // fallback for old string message
+              if (event.nativeEvent.data === "videoEnded") {
+                setIsVideoEnded(true);
+                setVideoWatchedPercent(100);
+                setCanMarkComplete(true);
+              }
             }
           }}
           style={{ flex: 1, backgroundColor: "#000" }}
@@ -214,7 +260,6 @@ const VideoDetails: React.FC = () => {
           <Ionicons name={isFullscreen ? "contract" : "expand"} size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-
       {!isFullscreen && (
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />} style={{ padding: 16 }}>
           <Text style={styles.sectionTitle}>Key Points:</Text>
@@ -226,42 +271,51 @@ const VideoDetails: React.FC = () => {
               <Text key={index} style={styles.bulletText}>• {item.trim()}</Text>
             ))}
 
-            {videoData.faqs && videoData.faqs.length > 0 && (
-  <View style={{ marginTop: 20 }}>
-    <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
-      FAQs (Tap to Play):
-    </Text>
-    {videoData.faqs.map((faq, index) => (
-      <TouchableOpacity
-        key={index}
-        style={{
-          backgroundColor: "#f1f1f1",
-          padding: 12,
-          borderRadius: 8,
-          marginBottom: 10,
-        }}
-        onPress={() => {
-          setSelectedFaqVideo(faq.answer);
-          setWebViewKey(prev => prev + 1);
-        }}
-      >
-        <Text numberOfLines={3} style={{ fontWeight: "600" }}>{faq.question}</Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-)}
+          {/* Progress Bar (fallback if react-native-paper is not installed) */}
+          <View style={{ marginVertical: 16 }}>
+            <Text style={{ fontWeight: "600", marginBottom: 4 }}>Watched: {Math.floor(videoWatchedPercent)}%</Text>
+            <View style={{ height: 8, borderRadius: 4, backgroundColor: '#eee', overflow: 'hidden' }}>
+              <View style={{ width: `${videoWatchedPercent}%`, height: 8, backgroundColor: '#4CAF50' }} />
+            </View>
+          </View>
 
+          {Array.isArray(videoData.faqs) && videoData.faqs.length > 0 && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
+                FAQs (Tap to Play):
+              </Text>
+              {videoData.faqs.map((faq, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={{
+                    backgroundColor: "#f1f1f1",
+                    padding: 12,
+                    borderRadius: 8,
+                    marginBottom: 10,
+                  }}
+                  onPress={() => {
+                    setSelectedFaqVideo(faq.answer);
+                    setWebViewKey(prev => prev + 1);
+                  }}
+                >
+                  <Text numberOfLines={3} style={{ fontWeight: "600" }}>{faq.question}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-          {isVideoEnded && !hasAcknowledged && !alreadyAcknowledged && videoStatus?.is_completed !== 1 && (
+          {/* Mark Complete Button, only enabled if canMarkComplete and not already marked */}
+          {!hasAcknowledged && !alreadyAcknowledged && videoStatus?.is_completed !== 1 && (
             <View style={{ flexDirection: "row", marginTop: 20, gap: 10 }}>
               <TouchableOpacity onPress={restartVideo} style={styles.buttonGrey}>
                 <Text>Watch Again</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                disabled={!canMarkComplete}
                 onPress={async () => {
                   Alert.alert(
                     "Confirm",
-                    "Do you really understand the video?",
+                    `You have watched ${Math.round(videoWatchedPercent)}% of the video. Do you really understand the video?`,
                     [
                       { text: "No", onPress: restartVideo },
                       {
@@ -281,7 +335,7 @@ const VideoDetails: React.FC = () => {
                     ]
                   );
                 }}
-                style={styles.buttonGreen}
+                style={[styles.buttonGreen, { opacity: canMarkComplete ? 1 : 0.5 }]}
               >
                 <Text style={{ color: "#fff" }}>I Understand</Text>
               </TouchableOpacity>

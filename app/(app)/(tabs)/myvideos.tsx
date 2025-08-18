@@ -7,7 +7,7 @@ import {
 } from "@/services/api";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -48,6 +48,8 @@ const MyVideos: React.FC = () => {
   const [selectedCategory, setSelectedCategory] =
     useState<VideoCategory | null>(null);
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  // Cache videos by category name
+  const videoCache = useRef<{ [category: string]: VideoItem[] }>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [message, setMessage] = useState<string | null>(null);
@@ -72,9 +74,15 @@ const MyVideos: React.FC = () => {
       const response = await getVideoCategories();
       if (response.status === "1") {
         setCategories(response.data);
-        setSelectedCategory(response.data[0]);
         setIsoCategories(response.iso);
         setMessage(response.message);
+        // Set Toolbox as default selection
+        const toolboxCategory = response.data.find((cat: VideoCategory) => cat.type === "toolbox");
+        if (toolboxCategory) {
+          setSelectedCategory(toolboxCategory);
+        } else if (response.data.length > 0) {
+          setSelectedCategory(response.data[0]);
+        }
       } else {
         setError("Failed to fetch categories.");
       }
@@ -84,8 +92,8 @@ const MyVideos: React.FC = () => {
     }
   };
 
-  // Fetch videos by category name
-  const fetchVideos = async (
+  // Fetch videos by category name, with caching
+  const fetchVideos = useCallback(async (
     categoryName: string,
     page: number = 1,
     isLoadMore = false
@@ -93,15 +101,26 @@ const MyVideos: React.FC = () => {
     if (!isLoadMore) setLoading(true);
     setError("");
 
+    // Use cache if available and not loading more
+    if (!isLoadMore && videoCache.current[categoryName] && page === 1) {
+      setVideos(videoCache.current[categoryName]);
+      setLoading(false);
+      setIsFetchingMore(false);
+      return;
+    }
+
     try {
       const response = await getVideosByCategory(categoryName, page);
 
       if (response.status === "1") {
+        let newVideos;
         if (isLoadMore) {
-          setVideos((prev) => [...prev, ...response.data.data]);
+          newVideos = [...(videoCache.current[categoryName] || []), ...response.data.data];
         } else {
-          setVideos(response.data.data);
+          newVideos = response.data.data;
         }
+        setVideos(newVideos);
+        videoCache.current[categoryName] = newVideos;
         setCurrentPage(response.data.current_page);
         setLastPage(response.data.last_page);
       } else {
@@ -115,27 +134,30 @@ const MyVideos: React.FC = () => {
       if (!isLoadMore) setLoading(false);
       setIsFetchingMore(false);
     }
-  };
+  }, []);
 
   // Load More Function
-  const loadMoreVideos = () => {
+  const loadMoreVideos = useCallback(() => {
     if (isFetchingMore || currentPage >= lastPage) return;
-
     setIsFetchingMore(true);
-    fetchVideos(selectedCategory?.name || "", currentPage + 1, true);
-  };
+    if (selectedCategory) {
+      fetchVideos(selectedCategory.name, currentPage + 1, true);
+    }
+  }, [isFetchingMore, currentPage, lastPage, selectedCategory, fetchVideos]);
 
   // On component mount, fetch categories
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  // When selectedCategory changes, fetch videos
+  // When selectedCategory changes, fetch videos (with cache)
   useEffect(() => {
     if (selectedCategory) {
-      fetchVideos(selectedCategory.name);
+      setCurrentPage(1);
+      setLastPage(1);
+      fetchVideos(selectedCategory.name, 1);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, fetchVideos]);
 
   // Certificate download handler (dynamic & type-safe)
   const downloadCertificate = async (categoryType: string) => {
@@ -338,7 +360,9 @@ const MyVideos: React.FC = () => {
             {loading ? (
               <ActivityIndicator size="large" color={primaryColor} />
             ) : error ? (
-              <Text style={{ color: "red", fontSize: 16 }}>{error}</Text>
+              <View>
+                <Text style={{ color: "red", fontSize: 16 }}>{error}</Text>
+              </View>
             ) : (
               <FlatList
                 showsVerticalScrollIndicator={false}
@@ -439,6 +463,9 @@ const MyVideos: React.FC = () => {
                     <ActivityIndicator size="small" color={primaryColor} />
                   ) : null
                 }
+                initialNumToRender={5}
+                windowSize={7}
+                removeClippedSubviews={true}
               />
             )}
           </View>
