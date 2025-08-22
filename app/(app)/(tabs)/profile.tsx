@@ -184,28 +184,54 @@ const Profile = () => {
           </View>
 
           {editMode ? (
-            <View style={{ flexDirection: "row", gap: 10, marginTop: responsive.margin(20), paddingHorizontal: responsive.padding(20) }}>
-              <TouchableOpacity style={[styles.logoutButton, { backgroundColor: "#28a745", flex: 1 }]} onPress={handleSave}>
-                <Text style={styles.logoutText}>Save Changes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.logoutButton, { backgroundColor: "#6c757d", flex: 1 }]} onPress={() => {
-                setEditMode(false);
-                if (userData) {
-                  setFormData({
-                    first_name: userData.first_name,
-                    last_name: userData.last_name,
-                    phone: userData.phone,
-                  });
-                }
-              }}>
-                <Text style={styles.logoutText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity style={[styles.logoutButton, { backgroundColor: "#ffc107", marginTop: 20 }]} onPress={() => setEditMode(true)}>
-              <Text style={styles.logoutText}>Edit Profile</Text>
-            </TouchableOpacity>
-          )}
+  <View
+    style={{
+      flexDirection: "row",
+      gap: 10,
+      marginTop: responsive.margin(20),
+      paddingHorizontal: responsive.padding(20),
+    }}
+  >
+    <TouchableOpacity
+      style={[styles.logoutButton, { backgroundColor: "#28a745", flex: 1 }]}
+      onPress={handleSave}
+    >
+      <Text style={styles.logoutText}>Save Changes</Text>
+    </TouchableOpacity>
+    <TouchableOpacity
+      style={[styles.logoutButton, { backgroundColor: "#6c757d", flex: 1 }]}
+      onPress={() => {
+        setEditMode(false);
+        if (userData) {
+          setFormData({
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            phone: userData.phone,
+          });
+        }
+      }}
+    >
+      <Text style={styles.logoutText}>Cancel</Text>
+    </TouchableOpacity>
+  </View>
+) : (
+  <View style={{ width: "100%", alignItems: "center" }}>
+    <TouchableOpacity
+      style={[styles.logoutButton, { backgroundColor: "#ffc107", marginTop: 20 }]}
+      onPress={() => setEditMode(true)}
+    >
+      <Text style={styles.logoutText}>Edit Profile</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={[styles.logoutButton, { backgroundColor: "#17a2b8", marginTop: 10 }]}
+      onPress={() => router.push("/screens/ChangePassword")}
+    >
+      <Text style={styles.logoutText}>Change Password</Text>
+    </TouchableOpacity>
+  </View>
+)}
+
         </View>
 
         {logoutLoading ? (

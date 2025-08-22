@@ -112,6 +112,11 @@ export interface UpdateUserProfileResponse {
   };
 }
 
+export interface ChangePasswordResponse {
+  success: number;
+  message: string;
+}
+
 // ====== Login Function ======
 export const loginUser = async (
   email: string,
@@ -419,6 +424,42 @@ export const updateUserProfile = async (accessToken: string, body: {
     console.error("Update Profile API error:", error?.response?.data || error.message);
     return {
       status: "0",
+      message: "Something went wrong. Please try again.",
+    };
+  }
+};
+
+// ====== Change Password ======
+export const changePassword = async (
+  current_password: string,
+  new_password: string,
+  new_password_confirmation: string
+): Promise<ChangePasswordResponse> => {
+  try {
+    const token = await AsyncStorage.getItem("access_token");
+    if (!token) throw new Error("Access token not found");
+
+    const response = await axios.post<ChangePasswordResponse>(
+      `${BASE_URL}/change-password`,
+      {
+        current_password,
+        new_password,
+        new_password_confirmation,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("❌ Change Password API error:", error?.response?.data || error.message);
+    return {
+      success: 0,
       message: "Something went wrong. Please try again.",
     };
   }

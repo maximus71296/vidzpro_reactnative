@@ -5,19 +5,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import React, { useEffect, useRef, useState } from "react";
-// import { ProgressBar } from "react-native-paper";
 import {
   ActivityIndicator,
-  Alert,
   BackHandler,
+  Modal,
   RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
-  View
+  View,
 } from "react-native";
 import type { WebView as WebViewType } from "react-native-webview";
 import { WebView } from "react-native-webview";
@@ -26,65 +26,44 @@ const VideoDetails: React.FC = () => {
   const window = useWindowDimensions();
   const { video_id } = useLocalSearchParams<{ video_id: string }>();
   const webViewRef = useRef<WebViewType>(null);
+
   const [videoData, setVideoData] = useState<Awaited<ReturnType<typeof getVideoDetail>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
+
   const [isVideoEnded, setIsVideoEnded] = useState(false);
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
   const [alreadyAcknowledged, setAlreadyAcknowledged] = useState(false);
   const [videoStatus, setVideoStatus] = useState<VideoWatchedStatusResponse["data"] | null>(null);
+
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFaqVideo, setSelectedFaqVideo] = useState<string | null>(null);
   const [videoWatchedPercent, setVideoWatchedPercent] = useState(0);
   const [canMarkComplete, setCanMarkComplete] = useState(false);
-  const [autoMarked, setAutoMarked] = useState(false);
+
+  // NEW: modal states for confirm + actions + yes/no
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [showActionsModal, setShowActionsModal] = useState(false);
+  const [showUnderstandModal, setShowUnderstandModal] = useState(false);
 
   const { width, height } = window;
-  const isLandscape = width > height;
 
   useEffect(() => {
     const backAction = () => {
       if (isFullscreen) {
-        toggleFullscreen(); // exits fullscreen
-        return true; // prevent default back action
+        toggleFullscreen();
+        return true;
       }
-      return false; // allow default back behavior
+      return false;
     };
-
     const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
-
-    return () => backHandler.remove(); // cleanup on unmount
+    return () => backHandler.remove();
   }, [isFullscreen]);
 
   useEffect(() => {
     if (video_id) fetchVideoDetails();
   }, [video_id]);
-
-  // Auto-mark as complete if video ends and not already marked
-  useEffect(() => {
-    if (
-      isVideoEnded &&
-      canMarkComplete &&
-      !hasAcknowledged &&
-      !alreadyAcknowledged &&
-      videoStatus?.is_completed !== 1 &&
-      !autoMarked
-    ) {
-      (async () => {
-        try {
-          await getVideoWatchedStatus(Number(video_id));
-          await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
-          setHasAcknowledged(true);
-          setAlreadyAcknowledged(true);
-          setAutoMarked(true);
-          alert("✅ Video marked as completed (auto).");
-        } catch {
-          alert("❌ Failed to complete video.");
-        }
-      })();
-    }
-  }, [isVideoEnded, canMarkComplete, hasAcknowledged, alreadyAcknowledged, videoStatus, autoMarked, video_id]);
 
   const fetchVideoDetails = async () => {
     try {
@@ -95,6 +74,7 @@ const VideoDetails: React.FC = () => {
       if (localAck === "true" || data.is_completed === 1) {
         setAlreadyAcknowledged(true);
         setHasAcknowledged(true);
+        setVideoWatchedPercent(100);
       }
 
       const status = await getVideoWatchedStatus(Number(video_id));
@@ -120,55 +100,80 @@ const VideoDetails: React.FC = () => {
     return match ? match[1] : "";
   };
 
-  const getVimeoHTML = (vimeoId: string) => `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://player.vimeo.com/api/player.js"></script>
-        <style>
-          html, body { margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; }
-          iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
-        </style>
-      </head>
-      <body>
-        <iframe id="vimeoPlayer"
-          src="https://player.vimeo.com/video/${vimeoId}?autoplay=1&controls=1&playsinline=1&fullscreen=0"
-          allow="autoplay; fullscreen" allowfullscreen>
-        </iframe>
-        <script>
-          const iframe = document.getElementById('vimeoPlayer');
-          window.vimeoPlayer = new Vimeo.Player(iframe);
-          let lastPercent = 0;
-          let duration = 0;
-          let watchedSeconds = 0;
-          let lastTime = 0;
-          window.vimeoPlayer.on('loaded', function(data) {
-            duration = data.duration;
-          });
-          window.vimeoPlayer.getDuration().then(function(d) { duration = d; });
-          window.vimeoPlayer.on('timeupdate', function(data) {
-            if (duration > 0) {
-              // Only count as watched if user is not skipping ahead by more than 5 seconds
-              if (Math.abs(data.seconds - lastTime) < 5) {
-                watchedSeconds += data.seconds - lastTime;
-              }
-              lastTime = data.seconds;
-              let percent = (watchedSeconds / duration) * 100;
-              if (percent > 100) percent = 100;
-              if (percent > lastPercent) {
-                lastPercent = percent;
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: "progress", percent: percent }));
-              }
+  /**
+   * HTML kept lean: anti fast-forward, report progress (capped at 99) and send "videoEnded".
+   * No UI inside the iframe.
+   */
+  const getVimeoHTML = (videoId: string) => `
+  <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; overflow: hidden; background: black; }
+        #vimeoPlayer { position: absolute; inset: 0; width: 100%; height: 100%; }
+        #blockOverlay {
+          position: absolute; inset: 0;
+          background: rgba(0,0,0,0.6); color: white;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 18px; z-index: 999; visibility: hidden;
+        }
+      </style>
+      <script src="https://player.vimeo.com/api/player.js"></script>
+    </head>
+    <body>
+      <div id="blockOverlay">⏩ Forward blocked</div>
+      <iframe id="vimeoPlayer"
+        src="https://player.vimeo.com/video/${videoId}?api=1&autoplay=0&muted=0&controls=1"
+        frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>
+      <script>
+        const iframe = document.getElementById('vimeoPlayer');
+        const player = new Vimeo.Player(iframe);
+        const overlay = document.getElementById('blockOverlay');
+
+        let duration = 0, maxAllowed = 0, lastPercent = 0;
+
+        const showBlocked = () => {
+          overlay.style.visibility = 'visible';
+          setTimeout(() => overlay.style.visibility = 'hidden', 900);
+        };
+
+        const snapBack = () => {
+          player.getPaused().then(isPaused => {
+            player.setCurrentTime(maxAllowed).then(() => {
+              if (!isPaused) player.play().catch(()=>{});
+            }).catch(()=>{});
+          }).catch(()=>{});
+          showBlocked();
+        };
+
+        player.on('loaded', (data) => {
+          duration = data?.duration || 0;
+        });
+
+        player.on('timeupdate', (data) => {
+          const t = data?.seconds || 0;
+          const tolerance = 0.75;
+          if (t > maxAllowed + tolerance) { snapBack(); return; }
+          if (t > maxAllowed) maxAllowed = t;
+
+          if (duration > 0) {
+            let percent = (maxAllowed / duration) * 100;
+            if (percent > 99) percent = 99; // stay at 99 until RN marks completion
+            if (percent > lastPercent) {
+              lastPercent = percent;
+              window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "progress", percent }));
             }
-          });
-          window.vimeoPlayer.on('ended', function() {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "videoEnded" }));
-          });
-        </script>
-      </body>
-    </html>
-  `;
+          }
+        });
+
+        player.on('ended', () => {
+          window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "videoEnded" }));
+        });
+      </script>
+    </body>
+  </html>
+`;
 
   const toggleFullscreen = async () => {
     try {
@@ -183,10 +188,21 @@ const VideoDetails: React.FC = () => {
     }
   };
 
-  const restartVideo = () => {
-    setWebViewKey(prev => prev + 1);
+  const resetForReplay = () => {
     setIsVideoEnded(false);
+    setShowConfirmModal(false);
+    setConfirmText("");
+    setShowActionsModal(false);
+    setShowUnderstandModal(false);
+    setVideoWatchedPercent(0);
   };
+
+  const restartVideo = () => {
+    resetForReplay();
+    setWebViewKey(prev => prev + 1); // reloads WebView
+  };
+
+  const baseVimeoId = videoData ? getVimeoIdFromUrl(videoData.url) : "";
 
   if (loading) {
     return (
@@ -204,7 +220,41 @@ const VideoDetails: React.FC = () => {
     );
   }
 
-  const baseVimeoId = getVimeoIdFromUrl(videoData.url);
+  // Handlers for the new flow
+  const handleConfirmSubmit = () => {
+    if (confirmText.trim().toLowerCase() === "confirm") {
+      setShowConfirmModal(false);
+      setShowActionsModal(true); // now show "I Understand" and "Watch Again"
+    }
+  };
+
+  const handleUnderstandPrimary = () => {
+    setShowActionsModal(false);
+    setShowUnderstandModal(true); // Yes/No popup
+  };
+
+  const handleUnderstandNo = () => {
+    setShowUnderstandModal(false);
+    restartVideo();
+  };
+
+  const handleUnderstandYes = async () => {
+    try {
+      // Call “completion” API — in your original code you used getVideoWatchedStatus; keeping same call.
+      await getVideoWatchedStatus(Number(video_id));
+      await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
+      setHasAcknowledged(true);
+      setAlreadyAcknowledged(true);
+      setShowUnderstandModal(false);
+
+      // Now the bar can hit 100%
+      setVideoWatchedPercent(100);
+      setCanMarkComplete(true);
+    } catch {
+      // You can show your own toast/snackbar if you use one; keeping it quiet per your no-alert preference.
+      setShowUnderstandModal(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -219,6 +269,7 @@ const VideoDetails: React.FC = () => {
         </View>
       )}
 
+      {/* Video */}
       <View style={{ width: "100%", height: isFullscreen ? height : height * 0.3 }}>
         <WebView
           key={webViewKey}
@@ -232,20 +283,16 @@ const VideoDetails: React.FC = () => {
             try {
               const data = JSON.parse(event.nativeEvent.data);
               if (data.type === "progress") {
+                // progress stays <= 99 until user completes confirm + yes flow
                 setVideoWatchedPercent(data.percent);
-                if (data.percent >= 95 && !canMarkComplete) setCanMarkComplete(true);
+                if (data.percent >= 95) setCanMarkComplete(true);
               } else if (data.type === "videoEnded") {
                 setIsVideoEnded(true);
-                setVideoWatchedPercent(100);
-                setCanMarkComplete(true);
+                // Show the confirm modal (text input) when the video actually ends
+                setShowConfirmModal(true);
               }
             } catch {
-              // fallback for old string message
-              if (event.nativeEvent.data === "videoEnded") {
-                setIsVideoEnded(true);
-                setVideoWatchedPercent(100);
-                setCanMarkComplete(true);
-              }
+              // no-op for legacy string messages
             }
           }}
           style={{ flex: 1, backgroundColor: "#000" }}
@@ -266,8 +313,13 @@ const VideoDetails: React.FC = () => {
           <Ionicons name={isFullscreen ? "contract" : "expand"} size={20} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/* Page content */}
       {!isFullscreen && (
-        <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />} style={{ padding: 16 }}>
+        <ScrollView
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          style={{ padding: 16 }}
+        >
           <Text style={styles.sectionTitle}>Key Points:</Text>
           {videoData.key_points
             .replace(/<[^>]+>/g, "")
@@ -277,7 +329,7 @@ const VideoDetails: React.FC = () => {
               <Text key={index} style={styles.bulletText}>• {item.trim()}</Text>
             ))}
 
-          {/* Progress Bar (fallback if react-native-paper is not installed) */}
+          {/* Progress Bar */}
           <View style={{ marginVertical: 16 }}>
             <Text style={{ fontWeight: "600", marginBottom: 4 }}>Watched: {Math.floor(videoWatchedPercent)}%</Text>
             <View style={{ height: 8, borderRadius: 4, backgroundColor: '#eee', overflow: 'hidden' }}>
@@ -285,70 +337,69 @@ const VideoDetails: React.FC = () => {
             </View>
           </View>
 
-          {Array.isArray(videoData.faqs) && videoData.faqs.length > 0 && (
-            <View style={{ marginTop: 20 }}>
-              <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
-                FAQs (Tap to Play):
-              </Text>
-              {videoData.faqs.map((faq, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={{
-                    backgroundColor: "#f1f1f1",
-                    padding: 12,
-                    borderRadius: 8,
-                    marginBottom: 10,
-                  }}
-                  onPress={() => {
-                    setSelectedFaqVideo(faq.answer);
-                    setWebViewKey(prev => prev + 1);
-                  }}
-                >
-                  <Text numberOfLines={3} style={{ fontWeight: "600" }}>{faq.question}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Mark Complete Button, only enabled if canMarkComplete and not already marked */}
-          {!hasAcknowledged && !alreadyAcknowledged && videoStatus?.is_completed !== 1 && (
-            <View style={{ flexDirection: "row", marginTop: 20, gap: 10 }}>
-              <TouchableOpacity onPress={restartVideo} style={styles.buttonGrey}>
-                <Text>Watch Again</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                disabled={!canMarkComplete}
-                onPress={async () => {
-                  Alert.alert(
-                    "Confirm",
-                    `You have watched ${Math.round(videoWatchedPercent)}% of the video. Do you really understand the video?`,
-                    [
-                      { text: "No", onPress: restartVideo },
-                      {
-                        text: "Yes",
-                        onPress: async () => {
-                          try {
-                            await getVideoWatchedStatus(Number(video_id));
-                            await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
-                            setHasAcknowledged(true);
-                            setAlreadyAcknowledged(true);
-                            alert("✅ Video marked as completed.");
-                          } catch {
-                            alert("❌ Failed to complete video.");
-                          }
-                        }
-                      }
-                    ]
-                  );
-                }}
-                style={[styles.buttonGreen, { opacity: canMarkComplete ? 1 : 0.5 }]}
-              >
-                <Text style={{ color: "#fff" }}>I Understand</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* After-completion actions are via modals now, so we remove the old inline buttons */}
         </ScrollView>
       )}
+
+      {/* ===== Modals ===== */}
+
+      {/* 1) Confirm Modal: text input centered on screen */}
+      <Modal visible={showConfirmModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Type <Text style={{ fontWeight: "800" }}>confirm</Text> to continue</Text>
+            <TextInput
+              value={confirmText}
+              onChangeText={setConfirmText}
+              placeholder="confirm"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.input}
+            />
+            <TouchableOpacity style={styles.buttonGreen} onPress={handleConfirmSubmit}>
+              <Text style={{ color: "#fff", textAlign: "center" }}>Confirm</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.buttonGrey, { marginTop: 10 }]} onPress={restartVideo}>
+              <Text>Watch Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2) Actions Modal: I Understand / Watch Again */}
+      <Modal visible={showActionsModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Choose an option</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity style={[styles.buttonGrey, { flex: 1 }]} onPress={restartVideo}>
+                <Text style={{ textAlign: "center" }}>Watch Again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.buttonGreen, { flex: 1 }]} onPress={handleUnderstandPrimary}>
+                <Text style={{ color: "#fff", textAlign: "center" }}>I Understand</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 3) Yes/No confirmation for understanding */}
+      <Modal visible={showUnderstandModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Do you understand the video?</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity style={[styles.buttonGrey, { flex: 1 }]} onPress={handleUnderstandNo}>
+                <Text style={{ textAlign: "center" }}>No</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.buttonGreen, { flex: 1 }]} onPress={handleUnderstandYes}>
+                <Text style={{ color: "#fff", textAlign: "center" }}>Yes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -359,18 +410,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#D9D9D9",
   },
 
-  // Header Section
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#033337",
     padding: responsive.padding(15),
-  },
-  headingBackButtonView: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 10,
-    flex: 1,
   },
   headingText: {
     color: "#fff",
@@ -382,64 +428,36 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  // Centered View
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
 
-  // Video Section
-  videoContainer: {
-    marginHorizontal: responsive.margin(10),
-    marginTop: responsive.margin(10),
-    borderRadius: responsive.borderRadius(10),
-    overflow: "hidden",
-    backgroundColor: "#000",
-  },
   webview: {
     flex: 1,
     backgroundColor: "#000",
   },
 
-  // Action Buttons (After Video Ended)
   buttonGrey: {
     backgroundColor: "#ccc",
     padding: responsive.padding(12),
     borderRadius: responsive.borderRadius(8),
-    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   buttonGreen: {
     backgroundColor: "#4CAF50",
     padding: responsive.padding(12),
     borderRadius: responsive.borderRadius(8),
-    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
 
-  // Video Description / Key Points Section
-  videoDetailsView: {
-    backgroundColor: "#fff",
-    marginHorizontal: responsive.margin(10),
-    marginTop: responsive.margin(16),
-    padding: responsive.padding(15),
-    borderRadius: responsive.borderRadius(10),
-  },
-  title: {
-    fontSize: responsive.fontSize(20),
-    fontWeight: "bold",
-    marginBottom: responsive.margin(10),
-  },
   sectionTitle: {
     fontSize: responsive.fontSize(16),
     fontWeight: "600",
     marginBottom: responsive.margin(8),
-  },
-  text: {
-    fontSize: responsive.fontSize(14),
-    marginTop: responsive.margin(4),
-    color: "#333",
   },
   bulletText: {
     fontSize: responsive.fontSize(14),
@@ -448,19 +466,33 @@ const styles = StyleSheet.create({
     paddingLeft: responsive.padding(8),
   },
 
-  // FAQ Cards
-  faqCard: {
-    backgroundColor: "#fff",
-    padding: responsive.padding(12),
-    borderRadius: responsive.borderRadius(10),
-    marginBottom: responsive.margin(10),
-    width: responsive.width(180),
-    elevation: 2,
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
-  faqText: {
-    fontWeight: "600",
-    fontSize: responsive.fontSize(14),
-    color: "#000",
+  modalCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 18,
+    gap: 14,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
   },
 });
 

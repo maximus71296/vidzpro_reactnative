@@ -17,7 +17,7 @@ import logo from "../../assets/images/logo.png";
 
 const Login = () => {
   const [email, setEmail] = useState<string>('miemp.user@yopmail.com');
-  const [password, setPassword] = useState<string>('eDToUSra');
+  const [password, setPassword] = useState<string>('newpassword123');
   const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState<boolean>(false);
 
