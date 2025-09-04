@@ -1,5 +1,5 @@
 import responsive from "@/responsive";
-import { getVideoDetail, getVideoWatchedStatus, VideoWatchedStatusResponse } from "@/services/api";
+import { getVideoDetail, getVideoWatchedStatus } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
@@ -27,7 +27,9 @@ const VideoDetails: React.FC = () => {
   const { video_id } = useLocalSearchParams<{ video_id: string }>();
   const webViewRef = useRef<WebViewType>(null);
 
-  const [videoData, setVideoData] = useState<Awaited<ReturnType<typeof getVideoDetail>> | null>(null);
+  const [videoData, setVideoData] = useState<Awaited<
+    ReturnType<typeof getVideoDetail>
+  > | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
@@ -35,7 +37,6 @@ const VideoDetails: React.FC = () => {
   const [isVideoEnded, setIsVideoEnded] = useState(false);
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
   const [alreadyAcknowledged, setAlreadyAcknowledged] = useState(false);
-  const [videoStatus, setVideoStatus] = useState<VideoWatchedStatusResponse["data"] | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
   const [videoWatchedPercent, setVideoWatchedPercent] = useState(0);
@@ -57,7 +58,10 @@ const VideoDetails: React.FC = () => {
       }
       return false;
     };
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
     return () => backHandler.remove();
   }, [isFullscreen]);
 
@@ -70,16 +74,13 @@ const VideoDetails: React.FC = () => {
       const data = await getVideoDetail(Number(video_id));
       setVideoData(data);
 
-      const localAck = await AsyncStorage.getItem(`video_acknowledged_${video_id}`);
+      const localAck = await AsyncStorage.getItem(
+        `video_acknowledged_${video_id}`
+      );
       if (localAck === "true" || data.is_completed === 1) {
         setAlreadyAcknowledged(true);
         setHasAcknowledged(true);
         setVideoWatchedPercent(100);
-      }
-
-      const status = await getVideoWatchedStatus(Number(video_id));
-      if (status.status === "1" && status.data) {
-        setVideoStatus(status.data);
       }
     } catch (error) {
       console.error("Error fetching video details:", error);
@@ -92,7 +93,7 @@ const VideoDetails: React.FC = () => {
     setRefreshing(true);
     await fetchVideoDetails();
     setRefreshing(false);
-    setWebViewKey(prev => prev + 1);
+    setWebViewKey((prev) => prev + 1);
   };
 
   const getVimeoIdFromUrl = (url: string) => {
@@ -178,9 +179,13 @@ const VideoDetails: React.FC = () => {
   const toggleFullscreen = async () => {
     try {
       if (!isFullscreen) {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+        await ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT
+        );
       } else {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        await ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT_UP
+        );
       }
       setIsFullscreen(!isFullscreen);
     } catch (error) {
@@ -199,7 +204,7 @@ const VideoDetails: React.FC = () => {
 
   const restartVideo = () => {
     resetForReplay();
-    setWebViewKey(prev => prev + 1); // reloads WebView
+    setWebViewKey((prev) => prev + 1); // reloads WebView
   };
 
   const baseVimeoId = videoData ? getVimeoIdFromUrl(videoData.url) : "";
@@ -239,22 +244,31 @@ const VideoDetails: React.FC = () => {
   };
 
   const handleUnderstandYes = async () => {
-    try {
-      // Call “completion” API — in your original code you used getVideoWatchedStatus; keeping same call.
-      await getVideoWatchedStatus(Number(video_id));
+  // Ensure at least 95% watched
+  if (videoWatchedPercent < 95) {
+    setShowUnderstandModal(false);
+    return;
+  }
+
+  try {
+    const res = await getVideoWatchedStatus(Number(video_id));
+    if (res.status === "1") {
+      // Persist acknowledgment locally
       await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
       setHasAcknowledged(true);
       setAlreadyAcknowledged(true);
-      setShowUnderstandModal(false);
-
-      // Now the bar can hit 100%
       setVideoWatchedPercent(100);
       setCanMarkComplete(true);
-    } catch {
-      // You can show your own toast/snackbar if you use one; keeping it quiet per your no-alert preference.
-      setShowUnderstandModal(false);
+    } else {
+      console.warn("Video completion API did not succeed:", res.message);
     }
-  };
+  } catch (e) {
+    console.error("Error marking video complete:", e);
+  } finally {
+    setShowUnderstandModal(false);
+  }
+};
+
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -265,12 +279,16 @@ const VideoDetails: React.FC = () => {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headingText} numberOfLines={1}>{videoData.title}</Text>
+          <Text style={styles.headingText} numberOfLines={1}>
+            {videoData.title}
+          </Text>
         </View>
       )}
 
       {/* Video */}
-      <View style={{ width: "100%", height: isFullscreen ? height : height * 0.3 }}>
+      <View
+        style={{ width: "100%", height: isFullscreen ? height : height * 0.3 }}
+      >
         <WebView
           key={webViewKey}
           ref={webViewRef}
@@ -310,14 +328,20 @@ const VideoDetails: React.FC = () => {
             zIndex: 10,
           }}
         >
-          <Ionicons name={isFullscreen ? "contract" : "expand"} size={20} color="#fff" />
+          <Ionicons
+            name={isFullscreen ? "contract" : "expand"}
+            size={20}
+            color="#fff"
+          />
         </TouchableOpacity>
       </View>
 
       {/* Page content */}
       {!isFullscreen && (
         <ScrollView
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
           style={{ padding: 16 }}
         >
           <Text style={styles.sectionTitle}>Key Points:</Text>
@@ -326,14 +350,31 @@ const VideoDetails: React.FC = () => {
             .split(/\n|\u2022|-|\d+\./)
             .filter((item) => item.trim() !== "")
             .map((item, index) => (
-              <Text key={index} style={styles.bulletText}>• {item.trim()}</Text>
+              <Text key={index} style={styles.bulletText}>
+                • {item.trim()}
+              </Text>
             ))}
 
           {/* Progress Bar */}
           <View style={{ marginVertical: 16 }}>
-            <Text style={{ fontWeight: "600", marginBottom: 4 }}>Watched: {Math.floor(videoWatchedPercent)}%</Text>
-            <View style={{ height: 8, borderRadius: 4, backgroundColor: '#eee', overflow: 'hidden' }}>
-              <View style={{ width: `${videoWatchedPercent}%`, height: 8, backgroundColor: '#4CAF50' }} />
+            <Text style={{ fontWeight: "600", marginBottom: 4 }}>
+              Watched: {Math.floor(videoWatchedPercent)}%
+            </Text>
+            <View
+              style={{
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: "#eee",
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  width: `${videoWatchedPercent}%`,
+                  height: 8,
+                  backgroundColor: "#4CAF50",
+                }}
+              />
             </View>
           </View>
 
@@ -347,7 +388,10 @@ const VideoDetails: React.FC = () => {
       <Modal visible={showConfirmModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Type <Text style={{ fontWeight: "800" }}>confirm</Text> to continue</Text>
+            <Text style={styles.modalTitle}>
+              Type <Text style={{ fontWeight: "800" }}>confirm</Text> to
+              continue
+            </Text>
             <TextInput
               value={confirmText}
               onChangeText={setConfirmText}
@@ -356,11 +400,19 @@ const VideoDetails: React.FC = () => {
               autoCorrect={false}
               style={styles.input}
             />
-            <TouchableOpacity style={styles.buttonGreen} onPress={handleConfirmSubmit}>
-              <Text style={{ color: "#fff", textAlign: "center" }}>Confirm</Text>
+            <TouchableOpacity
+              style={styles.buttonGreen}
+              onPress={handleConfirmSubmit}
+            >
+              <Text style={{ color: "#fff", textAlign: "center" }}>
+                Confirm
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.buttonGrey, { marginTop: 10 }]} onPress={restartVideo}>
+            <TouchableOpacity
+              style={[styles.buttonGrey, { marginTop: 10 }]}
+              onPress={restartVideo}
+            >
               <Text>Watch Again</Text>
             </TouchableOpacity>
           </View>
@@ -373,11 +425,19 @@ const VideoDetails: React.FC = () => {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Choose an option</Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity style={[styles.buttonGrey, { flex: 1 }]} onPress={restartVideo}>
+              <TouchableOpacity
+                style={[styles.buttonGrey, { flex: 1 }]}
+                onPress={restartVideo}
+              >
                 <Text style={{ textAlign: "center" }}>Watch Again</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.buttonGreen, { flex: 1 }]} onPress={handleUnderstandPrimary}>
-                <Text style={{ color: "#fff", textAlign: "center" }}>I Understand</Text>
+              <TouchableOpacity
+                style={[styles.buttonGreen, { flex: 1 }]}
+                onPress={handleUnderstandPrimary}
+              >
+                <Text style={{ color: "#fff", textAlign: "center" }}>
+                  I Understand
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -390,10 +450,16 @@ const VideoDetails: React.FC = () => {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Do you understand the video?</Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity style={[styles.buttonGrey, { flex: 1 }]} onPress={handleUnderstandNo}>
+              <TouchableOpacity
+                style={[styles.buttonGrey, { flex: 1 }]}
+                onPress={handleUnderstandNo}
+              >
                 <Text style={{ textAlign: "center" }}>No</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.buttonGreen, { flex: 1 }]} onPress={handleUnderstandYes}>
+              <TouchableOpacity
+                style={[styles.buttonGreen, { flex: 1 }]}
+                onPress={handleUnderstandYes}
+              >
                 <Text style={{ color: "#fff", textAlign: "center" }}>Yes</Text>
               </TouchableOpacity>
             </View>
