@@ -17,11 +17,10 @@ export default function TabsLayout() {
           backgroundColor: "#033337",
           borderTopWidth: 0.5,
           borderTopColor: "#ccc",
-          height: 60 + insets.bottom,
+          height: 30 + insets.bottom,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          marginBottom: 5,
         },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;

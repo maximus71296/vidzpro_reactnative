@@ -5,9 +5,10 @@ import {
   getVideosByCategory,
   VideoCategory,
 } from "@/services/api";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -270,6 +271,16 @@ const MyVideos: React.FC = () => {
       fetchVideos(selectedCategory.name, 1);
     }
   }, [selectedCategory]);
+
+  // 🔹 Refresh videos whenever screen comes back into focus
+useFocusEffect(
+  React.useCallback(() => {
+    if (selectedCategory) {
+      fetchVideos(selectedCategory.name, 1, false); // force re-fetch
+    }
+  }, [selectedCategory])
+);
+
 
   return (
     <>

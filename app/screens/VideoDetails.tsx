@@ -1,7 +1,12 @@
 import responsive from "@/responsive";
-import { getVideoDetail, getVideoWatchedStatus } from "@/services/api";
+import {
+  getVideoDetail,
+  getVideoWatchedStatus,
+  VideoWatchedStatusResponse,
+} from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import React, { useEffect, useRef, useState } from "react";
@@ -23,6 +28,7 @@ import type { WebView as WebViewType } from "react-native-webview";
 import { WebView } from "react-native-webview";
 
 const VideoDetails: React.FC = () => {
+  const navigation = useNavigation();
   const window = useWindowDimensions();
   const { video_id } = useLocalSearchParams<{ video_id: string }>();
   const webViewRef = useRef<WebViewType>(null);
@@ -47,6 +53,10 @@ const VideoDetails: React.FC = () => {
   const [confirmText, setConfirmText] = useState("");
   const [showActionsModal, setShowActionsModal] = useState(false);
   const [showUnderstandModal, setShowUnderstandModal] = useState(false);
+  const [videoStatus, setVideoStatus] = useState<
+    VideoWatchedStatusResponse["data"] | null
+  >(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { width, height } = window;
 
@@ -70,10 +80,28 @@ const VideoDetails: React.FC = () => {
   }, [video_id]);
 
   const fetchVideoDetails = async () => {
-    try {
-      const data = await getVideoDetail(Number(video_id));
-      setVideoData(data);
+  try {
+    const data = await getVideoDetail(Number(video_id));
+    setVideoData(data);
 
+    // 🔹 Fetch watched status from backend FIRST
+    const status = await getVideoWatchedStatus(Number(video_id));
+    if (status.status === "1" && status.data) {
+      setVideoStatus(status.data);
+
+      if (status.data.is_completed === 1) {
+        setVideoWatchedPercent(100);
+        setHasAcknowledged(true);
+        setAlreadyAcknowledged(true);
+        setCanMarkComplete(true);
+      } else {
+        // backend says not complete → start from 0 (or % if provided)
+        setVideoWatchedPercent(0);
+        setHasAcknowledged(false);
+        setAlreadyAcknowledged(false);
+      }
+    } else {
+      // 🔹 fallback: check local storage if API didn’t give a status
       const localAck = await AsyncStorage.getItem(
         `video_acknowledged_${video_id}`
       );
@@ -82,12 +110,14 @@ const VideoDetails: React.FC = () => {
         setHasAcknowledged(true);
         setVideoWatchedPercent(100);
       }
-    } catch (error) {
-      console.error("Error fetching video details:", error);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching video details:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -244,31 +274,31 @@ const VideoDetails: React.FC = () => {
   };
 
   const handleUnderstandYes = async () => {
-  // Ensure at least 95% watched
-  if (videoWatchedPercent < 95) {
-    setShowUnderstandModal(false);
-    return;
-  }
-
-  try {
-    const res = await getVideoWatchedStatus(Number(video_id));
-    if (res.status === "1") {
-      // Persist acknowledgment locally
-      await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
-      setHasAcknowledged(true);
-      setAlreadyAcknowledged(true);
-      setVideoWatchedPercent(100);
-      setCanMarkComplete(true);
-    } else {
-      console.warn("Video completion API did not succeed:", res.message);
+    if (videoWatchedPercent < 95) {
+      setShowUnderstandModal(false);
+      return;
     }
-  } catch (e) {
-    console.error("Error marking video complete:", e);
-  } finally {
-    setShowUnderstandModal(false);
-  }
-};
 
+    try {
+      const res = await getVideoWatchedStatus(Number(video_id));
+      if (res.status === "1") {
+        await AsyncStorage.setItem(`video_acknowledged_${video_id}`, "true");
+        setHasAcknowledged(true);
+        setAlreadyAcknowledged(true);
+        setShowUnderstandModal(false);
+
+        // 🔹 Update progress instantly
+        setVideoWatchedPercent(100);
+        setCanMarkComplete(true);
+      } else {
+        console.warn("Video completion API failed:", res.message);
+      }
+    } catch (e) {
+      console.error("Error marking video complete:", e);
+    } finally {
+      setShowUnderstandModal(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -385,39 +415,57 @@ const VideoDetails: React.FC = () => {
       {/* ===== Modals ===== */}
 
       {/* 1) Confirm Modal: text input centered on screen */}
-      <Modal visible={showConfirmModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              Type <Text style={{ fontWeight: "800" }}>confirm</Text> to
-              continue
-            </Text>
-            <TextInput
-              value={confirmText}
-              onChangeText={setConfirmText}
-              placeholder="confirm"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
-            <TouchableOpacity
-              style={styles.buttonGreen}
-              onPress={handleConfirmSubmit}
-            >
-              <Text style={{ color: "#fff", textAlign: "center" }}>
-                Confirm
-              </Text>
-            </TouchableOpacity>
+      {/* 1) Confirm Modal */}
+<Modal visible={showConfirmModal} transparent animationType="fade">
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalCard}>
+      <Text style={styles.modalTitle}>
+        Type 'complete' and submit if you understand, or watch the video again
+      </Text>
 
-            <TouchableOpacity
-              style={[styles.buttonGrey, { marginTop: 10 }]}
-              onPress={restartVideo}
-            >
-              <Text>Watch Again</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <TextInput
+        value={confirmText}
+        onChangeText={(t) => {
+          setConfirmText(t);
+          setErrorMessage("");
+        }}
+        placeholder="complete"
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={styles.input}
+      />
+
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.buttonBlack} onPress={restartVideo}>
+          <Text style={{ color: "#fbc511", fontWeight: "600" }}>
+            Watch Again
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.buttonGold}
+          onPress={() => {
+            if (confirmText.trim().toLowerCase() === "complete") {
+              setShowConfirmModal(false);
+              setShowActionsModal(true);
+            } else {
+              setErrorMessage(
+                "Please either type complete and submit to confirm your understanding. Or watch the video again."
+              );
+            }
+          }}
+        >
+          <Text style={{ color: "#000", fontWeight: "600" }}>Confirm</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
 
       {/* 2) Actions Modal: I Understand / Watch Again */}
       <Modal visible={showActionsModal} transparent animationType="slide">
@@ -426,16 +474,16 @@ const VideoDetails: React.FC = () => {
             <Text style={styles.modalTitle}>Choose an option</Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
-                style={[styles.buttonGrey, { flex: 1 }]}
+                style={[styles.buttonBlack, { flex: 1 }]}
                 onPress={restartVideo}
               >
-                <Text style={{ textAlign: "center" }}>Watch Again</Text>
+                <Text style={{ textAlign: "center", color: '#fbc511' }}>Watch Again</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.buttonGreen, { flex: 1 }]}
+                style={[styles.buttonGold, { flex: 1 }]}
                 onPress={handleUnderstandPrimary}
               >
-                <Text style={{ color: "#fff", textAlign: "center" }}>
+                <Text style={{ color: "#000", textAlign: "center" }}>
                   I Understand
                 </Text>
               </TouchableOpacity>
@@ -451,16 +499,16 @@ const VideoDetails: React.FC = () => {
             <Text style={styles.modalTitle}>Do you understand the video?</Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
-                style={[styles.buttonGrey, { flex: 1 }]}
+                style={[styles.buttonBlack, { flex: 1 }]}
                 onPress={handleUnderstandNo}
               >
-                <Text style={{ textAlign: "center" }}>No</Text>
+                <Text style={{ textAlign: "center", color: '#fbc511'  }}>No</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.buttonGreen, { flex: 1 }]}
+                style={[styles.buttonGold, { flex: 1 }]}
                 onPress={handleUnderstandYes}
               >
-                <Text style={{ color: "#fff", textAlign: "center" }}>Yes</Text>
+                <Text style={{ color: "#000", textAlign: "center" }}>Yes</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -513,7 +561,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonGreen: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#fbc511",
     padding: responsive.padding(12),
     borderRadius: responsive.borderRadius(8),
     alignItems: "center",
@@ -560,6 +608,38 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 14,
   },
+  errorText: {
+  color: "red",
+  fontSize: 12,
+  textAlign: "center",
+  marginBottom: 6,
+},
+
+buttonRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  width: "100%",
+  marginTop: 10,
+},
+
+buttonBlack: {
+  flex: 1,
+  backgroundColor: "#000",
+  padding: responsive.padding(12),
+  borderRadius: responsive.borderRadius(8),
+  alignItems: "center",
+  marginRight: 8,
+},
+
+buttonGold: {
+  flex: 1,
+  backgroundColor: "#fbc511",
+  padding: responsive.padding(12),
+  borderRadius: responsive.borderRadius(8),
+  alignItems: "center",
+  marginLeft: 8,
+},
+
 });
 
 export default VideoDetails;
