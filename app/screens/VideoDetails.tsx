@@ -431,7 +431,7 @@ const VideoDetails: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
-              Type 'complete' and submit if you understand, or watch the video
+              Type 'CONFIRM' and submit if you understand, or watch the video
               again
             </Text>
 
@@ -441,7 +441,7 @@ const VideoDetails: React.FC = () => {
                 setConfirmText(t);
                 setErrorMessage("");
               }}
-              placeholder="complete"
+              placeholder="'CONFIRM'"
               autoCapitalize="none"
               autoCorrect={false}
               style={styles.input}
@@ -464,12 +464,12 @@ const VideoDetails: React.FC = () => {
               <TouchableOpacity
                 style={styles.buttonGold}
                 onPress={() => {
-                  if (confirmText.trim().toLowerCase() === "complete") {
+                  if (confirmText.trim().toLowerCase() === "confirm") {
                     setShowConfirmModal(false);
                     setShowActionsModal(true);
                   } else {
                     setErrorMessage(
-                      "Please either type complete and submit to confirm your understanding. Or watch the video again."
+                      "Please either type CONFIRM and submit to confirm your understanding. Or watch the video again."
                     );
                   }
                 }}
