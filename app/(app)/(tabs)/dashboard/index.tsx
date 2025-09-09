@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import dashboardImage from "../../../assets/images/dahsboardImage.png";
+import dashboardImage from "../../../../assets/images/dahsboardImage.png";
 
 const Dashboard = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);

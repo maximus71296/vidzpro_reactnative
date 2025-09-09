@@ -225,7 +225,7 @@ const Profile = () => {
 
     <TouchableOpacity
       style={[styles.logoutButton, { backgroundColor: "#17a2b8", marginTop: 10 }]}
-      onPress={() => router.push("/screens/ChangePassword")}
+      onPress={() => router.push("/(app)/profile/change-password")}
     >
       <Text style={styles.logoutText}>Change Password</Text>
     </TouchableOpacity>

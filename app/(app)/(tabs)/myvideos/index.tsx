@@ -94,16 +94,12 @@ const MyVideos: React.FC = () => {
   };
 
   // Fetch videos by category name, with caching
-  const fetchVideos = useCallback(async (
-    categoryName: string,
-    page: number = 1,
-    isLoadMore = false
-  ) => {
+  const fetchVideos = useCallback(
+  async (categoryName: string, page: number = 1, isLoadMore = false, ignoreCache = false) => {
     if (!isLoadMore) setLoading(true);
     setError("");
 
-    // Use cache if available and not loading more
-    if (!isLoadMore && videoCache.current[categoryName] && page === 1) {
+    if (!isLoadMore && videoCache.current[categoryName] && page === 1 && !ignoreCache) {
       setVideos(videoCache.current[categoryName]);
       setLoading(false);
       setIsFetchingMore(false);
@@ -112,14 +108,10 @@ const MyVideos: React.FC = () => {
 
     try {
       const response = await getVideosByCategory(categoryName, page);
-
       if (response.status === "1") {
-        let newVideos;
-        if (isLoadMore) {
-          newVideos = [...(videoCache.current[categoryName] || []), ...response.data.data];
-        } else {
-          newVideos = response.data.data;
-        }
+        let newVideos = isLoadMore
+          ? [...(videoCache.current[categoryName] || []), ...response.data.data]
+          : response.data.data;
         setVideos(newVideos);
         videoCache.current[categoryName] = newVideos;
         setCurrentPage(response.data.current_page);
@@ -135,7 +127,10 @@ const MyVideos: React.FC = () => {
       if (!isLoadMore) setLoading(false);
       setIsFetchingMore(false);
     }
-  }, []);
+  },
+  []
+);
+
 
   // Load More Function
   const loadMoreVideos = useCallback(() => {
@@ -276,10 +271,11 @@ const MyVideos: React.FC = () => {
 useFocusEffect(
   React.useCallback(() => {
     if (selectedCategory) {
-      fetchVideos(selectedCategory.name, 1, false); // force re-fetch
+      fetchVideos(selectedCategory.name, 1, false, true); // ignore cache, force refresh
     }
   }, [selectedCategory])
 );
+
 
 
   return (
@@ -384,8 +380,8 @@ useFocusEffect(
                     activeOpacity={0.8}
                     onPress={() =>
                       router.push({
-                        pathname: "/screens/VideoDetails",
-                        params: { video_id: item.id },
+                        pathname: "/(app)/myvideos/[videoId]",
+                        params: { videoId: item.id },
                       })
                     }
                     style={styles.videoCardView}
